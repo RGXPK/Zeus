@@ -159,7 +159,57 @@ img{max-width:100%; display:block;}
   display:flex; align-items:center; gap:8px;
   font-size:13px; font-weight:800; color:var(--text-dim); margin-bottom:14px;
 }
-.section-label .dot{width:6px; height:6px; border-radius:50%; background:var(--teal);}
+.section-label .dot{width:6px; height:6px; border-radius:50%; background:var(--gold);}
+
+/* ---------- search ---------- */
+.search-bar{
+  display:flex; align-items:center; gap:10px;
+  background:var(--card); border:1px solid var(--card-border);
+  border-radius:16px; padding:12px 15px; margin-bottom:20px;
+}
+.search-bar .icn{color:var(--text-faint); flex-shrink:0;}
+.search-bar input{
+  flex:1; background:none; border:none; outline:none; color:var(--text);
+  font-family:inherit; font-size:13.5px;
+}
+.search-bar input::placeholder{color:var(--text-faint);}
+.search-bar .sb-clear{color:var(--text-faint); flex-shrink:0; display:none;}
+.search-bar.has-text .sb-clear{display:flex;}
+
+.search-results{margin-bottom:10px;}
+.sr-group-label{font-size:11.5px; font-weight:800; color:var(--gold); margin:16px 0 10px; display:flex; align-items:center; gap:6px;}
+.sr-group-label:first-child{margin-top:0;}
+.sr-row{
+  display:flex; align-items:center; gap:12px;
+  background:var(--card); border:1px solid var(--card-border);
+  border-radius:12px; padding:12px 14px; margin-bottom:9px;
+}
+.sr-row .sr-icon{
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  background:var(--gold-glow); border:1px solid var(--gold-line); color:var(--gold);
+  display:flex; align-items:center; justify-content:center;
+}
+.sr-row .sr-text{flex:1; min-width:0;}
+.sr-row .sr-title{font-weight:700; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sr-row .sr-path{font-size:10.5px; color:var(--text-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+/* ---------- continue watching ---------- */
+.continue-card{
+  display:flex; align-items:center; gap:14px;
+  background:linear-gradient(120deg,var(--gold-glow),transparent);
+  border:1px solid var(--gold-line); border-radius:18px;
+  padding:14px; margin-bottom:20px;
+}
+.continue-card .cc-thumb{
+  width:52px; height:52px; border-radius:14px; flex-shrink:0;
+  background:radial-gradient(circle,rgba(241,183,109,.22),transparent 70%);
+  border:1.5px solid var(--gold-line); color:var(--gold);
+  display:flex; align-items:center; justify-content:center;
+}
+.continue-card .cc-text{flex:1; min-width:0;}
+.continue-card .cc-label{font-size:10.5px; font-weight:800; color:var(--gold); letter-spacing:.3px;}
+.continue-card .cc-title{font-weight:800; font-size:13.5px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.continue-card .cc-arrow{color:var(--gold); flex-shrink:0; width:18px; height:18px;}
 
 /* ---------- subjects grid (medallion cards) ---------- */
 .grid-subjects{display:grid; grid-template-columns:repeat(2,1fr); gap:13px;}
@@ -448,8 +498,8 @@ img{max-width:100%; display:block;}
   <div class="brand" id="brandHome">
     <div class="brand-mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-2 8 11-14h-7l2-6z"/></svg></div>
     <div class="brand-text">
-      <div class="gr">ZEUS <span>⚡</span> ΖΕΥΣ</div>
-      <div class="ar">السادس الإعدادي — الفرع العملي< /div>
+      <div class="gr">ZEUS <span>⚡</span> ACADEMY</div>
+      <div class="ar">السادس الإعدادي — الفرع العملي</div>
     </div>
   </div>
   <div id="authChipHost"></div>
@@ -469,8 +519,20 @@ img{max-width:100%; display:block;}
       <div class="hero-stat"><div class="hs-num" id="statLectures">0</div><div class="hs-label">محاضرة</div></div>
     </div>
   </div>
-  <div class="section-label"><span class="dot"></span>المواد الدراسية</div>
-  <div id="subjectsGrid" class="grid-subjects"></div>
+
+  <div class="search-bar" id="searchBar">
+    <span class="icn" style="width:17px;height:17px;" id="searchIcon"></span>
+    <input id="searchInput" type="text" placeholder="ابحث عن مادة، مدرّس، أو محاضرة...">
+    <button class="sb-clear icn" style="width:15px;height:15px;" id="searchClear" onclick="clearSearch()"></button>
+  </div>
+
+  <div id="searchResults" class="search-results hidden"></div>
+
+  <div id="homeContent">
+    <div id="continueWatchSlot"></div>
+    <div class="section-label"><span class="dot"></span>المواد الدراسية</div>
+    <div id="subjectsGrid" class="grid-subjects"></div>
+  </div>
 </div>
 
 <!-- ===================== TEACHERS ===================== -->
@@ -637,7 +699,9 @@ const ICONS = {
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   bookOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
-  play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>'
+  play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-8.46L3 8"/><polyline points="12 7 12 12 16 14"/></svg>'
 };
 function ic(name, size){ size = size||18; return `<span class="icn" style="width:${size}px;height:${size}px;">${ICONS[name]||''}</span>`; }
 
@@ -711,7 +775,7 @@ function showView(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   window.scrollTo({top:0, behavior:'smooth'});
 }
-function goHome(){ cur = {subjectId:null, teacherId:null, chapterId:null}; showView('subjects'); }
+function goHome(){ cur = {subjectId:null, teacherId:null, chapterId:null}; renderContinueWatch(); showView('subjects'); }
 function navTab(tab){
   if(tab==='subjects') return showView('subjects');
   if(tab==='teachers'){
@@ -737,6 +801,7 @@ $('crumbToChapters').addEventListener('click', ()=>showView('chapters'));
 /* ---------------------------------------------------------------------- */
 function renderSubjects(){
   updateHeroStats();
+  renderContinueWatch();
   const wrap = $('subjectsGrid');
   if(!SUBJECTS.length){
     wrap.innerHTML = emptyHTML('grid','لا توجد مواد بعد','الأدمن لسا ما أضاف أي مادة دراسية.');
@@ -910,6 +975,7 @@ function playLecture(id){
   }
   curLecture = LECTURES.find(l=>l.id===id);
   if(!curLecture) return;
+  saveLastWatched(curLecture);
   curServerIdx = 0;
   $('playerTitle').textContent = curLecture.title;
   renderServerTabs();
@@ -1389,12 +1455,121 @@ function mountStaticIcons(){
   $('adminBtn').innerHTML = ic('settings',17);
   $('adminFab').innerHTML = ic('settings',18);
   $('playerCloseBtn').innerHTML = ic('close',17);
+  $('searchIcon').innerHTML = ic('search',17);
+  $('searchClear').innerHTML = ic('close',13);
   document.querySelectorAll('.nav-btn .ni[data-icon]').forEach(el=>{
     el.innerHTML = ic(el.dataset.icon, 20);
   });
   renderAuthChip();
 }
 mountStaticIcons();
+
+/* ---------------------------------------------------------------------- */
+/* QUICK SEARCH                                                             */
+/* ---------------------------------------------------------------------- */
+$('searchInput').addEventListener('input', (e)=>{
+  const q = e.target.value.trim();
+  $('searchBar').classList.toggle('has-text', !!q);
+  if(!q){ $('searchResults').classList.add('hidden'); $('homeContent').classList.remove('hidden'); return; }
+  runSearch(q);
+});
+function clearSearch(){
+  $('searchInput').value = '';
+  $('searchBar').classList.remove('has-text');
+  $('searchResults').classList.add('hidden');
+  $('homeContent').classList.remove('hidden');
+}
+function runSearch(q){
+  const nq = q.toLowerCase();
+  const subj = SUBJECTS.filter(s=>(s.name||'').toLowerCase().includes(nq));
+  const teach = TEACHERS.filter(t=>(t.name||'').toLowerCase().includes(nq));
+  const chap = CHAPTERS.filter(c=>(c.title||'').toLowerCase().includes(nq));
+  const lec = LECTURES.filter(l=>(l.title||'').toLowerCase().includes(nq));
+
+  const groups = [
+    {label:'المواد', icon:'grid', items: subj.map(s=>({title:s.name, path:'مادة دراسية', go:`openSubject('${s.id}')`}))},
+    {label:'المدرّسين', icon:'users', items: teach.map(t=>({title:t.name, path:subjName(t.subjectId), go:`jumpToTeacher('${t.id}')`}))},
+    {label:'الفصول', icon:'layers', items: chap.map(c=>({title:c.title, path:teachName(c.teacherId), go:`jumpToChapter('${c.id}')`}))},
+    {label:'المحاضرات', icon:'playCircle', items: lec.map(l=>({title:l.title, path:chapTitle(l.chapterId), go:`jumpToLecture('${l.id}')`}))},
+  ].filter(g=>g.items.length);
+
+  const wrap = $('searchResults');
+  $('homeContent').classList.add('hidden');
+  wrap.classList.remove('hidden');
+  if(!groups.length){
+    wrap.innerHTML = emptyHTML('search','ما لقينا نتائج','جرّب كلمة بحث ثانية.');
+    return;
+  }
+  wrap.innerHTML = groups.map(g=>`
+    <div class="sr-group-label">${ic(g.icon,13)} ${g.label}</div>
+    ${g.items.map(it=>`
+      <button class="sr-row" onclick="${it.go}">
+        <div class="sr-icon">${ic(g.icon,16)}</div>
+        <div class="sr-text">
+          <div class="sr-title">${esc(it.title)}</div>
+          <div class="sr-path">${esc(it.path||'')}</div>
+        </div>
+        ${ic('chevronLeft',14)}
+      </button>
+    `).join('')}
+  `).join('');
+}
+/* jump helpers — resolve the parent chain then navigate straight to the target */
+function jumpToTeacher(teacherId){
+  const t = TEACHERS.find(x=>x.id===teacherId); if(!t) return;
+  cur.subjectId = t.subjectId; cur.teacherId=null; cur.chapterId=null;
+  clearSearch(); openTeacher(teacherId);
+}
+function jumpToChapter(chapterId){
+  const c = CHAPTERS.find(x=>x.id===chapterId); if(!c) return;
+  cur.subjectId = c.subjectId; cur.teacherId = c.teacherId; cur.chapterId=null;
+  clearSearch(); openChapter(chapterId);
+}
+function jumpToLecture(lectureId){
+  const l = LECTURES.find(x=>x.id===lectureId); if(!l) return;
+  const c = CHAPTERS.find(x=>x.id===l.chapterId); if(!c) return;
+  cur.subjectId = c.subjectId; cur.teacherId = c.teacherId; cur.chapterId = c.id;
+  clearSearch();
+  renderLecturesTitle(); renderLectures(); showView('lectures');
+  playLecture(lectureId);
+}
+
+/* ---------------------------------------------------------------------- */
+/* CONTINUE WATCHING                                                       */
+/* ---------------------------------------------------------------------- */
+const LWKEY = 'zeus_last_watched';
+function saveLastWatched(lecture){
+  const c = CHAPTERS.find(x=>x.id===lecture.chapterId);
+  if(!c) return;
+  localStorage.setItem(LWKEY, JSON.stringify({
+    lectureId: lecture.id, chapterId: c.id, teacherId: c.teacherId, subjectId: c.subjectId,
+    title: lecture.title, ts: Date.now()
+  }));
+}
+function renderContinueWatch(){
+  const slot = $('continueWatchSlot');
+  if(!slot) return;
+  let data;
+  try{ data = JSON.parse(localStorage.getItem(LWKEY)||'null'); }catch(e){ data = null; }
+  if(!data || !LECTURES.find(l=>l.id===data.lectureId)){ slot.innerHTML=''; return; }
+  slot.innerHTML = `
+    <button class="continue-card" onclick="resumeLastWatched()">
+      <div class="cc-thumb">${ic('history',22)}</div>
+      <div class="cc-text">
+        <div class="cc-label">تابع المشاهدة</div>
+        <div class="cc-title">${esc(data.title)}</div>
+      </div>
+      <div class="cc-arrow">${ic('chevronLeft',18)}</div>
+    </button>`;
+}
+function resumeLastWatched(){
+  let data;
+  try{ data = JSON.parse(localStorage.getItem(LWKEY)||'null'); }catch(e){ data = null; }
+  if(!data) return;
+  cur.subjectId = data.subjectId; cur.teacherId = data.teacherId; cur.chapterId = data.chapterId;
+  renderLecturesTitle(); renderLectures(); showView('lectures');
+  playLecture(data.lectureId);
+}
 
 /* ---------------------------------------------------------------------- */
 /* BOOT                                                                      */
