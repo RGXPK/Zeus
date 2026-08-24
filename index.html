@@ -1091,6 +1091,15 @@ function resolveServerEmbed(url){
   if(m){
     return {type:'iframe', src:`https://www.youtube.com/embed/${m[1]}?rel=0`};
   }
+  // Rumble — already an embed link
+  if(url.includes('rumble.com/embed/')){
+    return {type:'iframe', src:url};
+  }
+  // Rumble — regular watch-page link (rumble.com/vXXXXXX-title.html) → convert to the real embed URL
+  m = url.match(/rumble\.com\/(v[a-z0-9]+)[-.]/i);
+  if(m && url.includes('rumble.com')){
+    return {type:'iframe', src:`https://rumble.com/embed/${m[1]}/`};
+  }
   // Direct video file
   if(/\.(mp4|webm|ogg|m3u8)(\?.*)?$/i.test(url)){
     return {type:'video', src:url};
