@@ -4,11 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ZEUS | ACADEMY — منصة السادس الإعدادي</title>
-<meta name="theme-color" content="#070707">
+<meta name="theme-color" content="#070706">
 <meta name="description" content="منصة تعليمية لطلاب السادس الإعدادي - الفرع العملي">
+
+<!-- PWA: manifest + icons (real files — يلزم يكونوا بنفس مجلد هذا الملف) -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZEUS">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23070706'/%3E%3Cpath d='M55 15 20 58h26l-9 33 45-58H55l9-18z' fill='%23F1B76D'/%3E%3C/svg%3E">
+
 
 <style>
 :root{
@@ -1477,13 +1487,16 @@ function fmtDate(ts){
 }
 
 /* ---- ADMIN: SUBJECTS ---- */
+let editingSubjectId = null;
 function renderAdminSubjects(body){
+  editingSubjectId = null;
   body.innerHTML = `
     <div class="field-row">
       <div class="field"><label>اسم المادة</label><input id="newSubjName" placeholder="مثال: الرياضيات"></div>
       <div class="field" style="max-width:80px;"><label>أيقونة</label><input id="newSubjIcon" placeholder="📘"></div>
     </div>
-    <button class="btn-primary" onclick="addSubject()">+ إضافة مادة</button>
+    <button class="btn-primary" id="subjSubmitBtn" onclick="addSubject()">+ إضافة مادة</button>
+    <button class="btn-secondary hidden" id="subjCancelBtn" onclick="cancelEditSubject()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
       ${SUBJECTS.map((s,i)=>`
         <div class="manage-row ${s.active===false?'inactive':''}">
@@ -1494,6 +1507,7 @@ function renderAdminSubjects(body){
           <div class="mr-title">${s.active===false?'<span class="inactive-badge">معطّلة</span>':''}${s.icon?esc(s.icon)+' ':''}${esc(s.name)}</div>
           <div class="mr-actions">
             <button class="${s.active!==false?'toggle-on':''}" onclick="toggleActive('subjects','${s.id}',${s.active!==false})">${ic(s.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="editSubject('${s.id}')">${ic('edit',15)}</button>
             <button class="del" onclick="deleteDoc('subjects','${s.id}','المادة')">${ic('trash',15)}</button>
           </div>
         </div>
@@ -1503,20 +1517,41 @@ function renderAdminSubjects(body){
 function addSubject(){
   const name = $('newSubjName').value.trim(), icon = $('newSubjIcon').value.trim();
   if(!name) return toast('اكتب اسم المادة');
+  if(editingSubjectId){
+    db.collection('subjects').doc(editingSubjectId).update({name, icon: icon||'📘'})
+      .then(()=>{ toast('تم تحديث المادة'); editingSubjectId=null; renderAdminBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
   db.collection('subjects').add({name, icon: icon||'📘', order: Date.now()})
     .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
+function editSubject(id){
+  const s = SUBJECTS.find(x=>x.id===id);
+  if(!s) return;
+  editingSubjectId = id;
+  $('newSubjName').value = s.name || '';
+  $('newSubjIcon').value = s.icon || '';
+  const btn = $('subjSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('subjCancelBtn').classList.remove('hidden');
+}
+function cancelEditSubject(){ editingSubjectId=null; renderAdminBody(); }
 
 /* ---- ADMIN: TEACHERS ---- */
+let editingTeacherId = null;
 function renderAdminTeachers(body){
+  editingTeacherId = null;
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newTeachSubj">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
     </div>
     <div class="field"><label>اسم المدرّس</label><input id="newTeachName" placeholder="مثال: حيدر عبدالائمة"></div>
     <div class="field"><label>رابط صورة (اختياري)</label><input id="newTeachPhoto" placeholder="https://..."></div>
-    <button class="btn-primary" onclick="addTeacher()">+ إضافة مدرّس</button>
+    <button class="btn-primary" id="teachSubmitBtn" onclick="addTeacher()">+ إضافة مدرّس</button>
+    <button class="btn-secondary hidden" id="teachCancelBtn" onclick="cancelEditTeacher()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
       ${TEACHERS.map(t=>{
         const sibs = TEACHERS.filter(x=>x.subjectId===t.subjectId);
@@ -1533,6 +1568,7 @@ function renderAdminTeachers(body){
           </div>
           <div class="mr-actions">
             <button class="${t.active!==false?'toggle-on':''}" onclick="toggleActive('teachers','${t.id}',${t.active!==false})">${ic(t.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="editTeacher('${t.id}')">${ic('edit',15)}</button>
             <button class="del" onclick="deleteDoc('teachers','${t.id}','المدرّس')">${ic('trash',15)}</button>
           </div>
         </div>`;
@@ -1544,13 +1580,33 @@ function addTeacher(){
   const subjectId = $('newTeachSubj').value, name = $('newTeachName').value.trim(), photo = $('newTeachPhoto').value.trim();
   if(!subjectId) return toast('أضف مادة أولًا');
   if(!name) return toast('اكتب اسم المدرّس');
+  if(editingTeacherId){
+    db.collection('teachers').doc(editingTeacherId).update({subjectId, name, photo})
+      .then(()=>{ toast('تم تحديث المدرّس'); editingTeacherId=null; renderAdminBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
   db.collection('teachers').add({subjectId, name, photo, order: Date.now()})
     .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
+function editTeacher(id){
+  const t = TEACHERS.find(x=>x.id===id);
+  if(!t) return;
+  editingTeacherId = id;
+  $('newTeachSubj').value = t.subjectId || '';
+  $('newTeachName').value = t.name || '';
+  $('newTeachPhoto').value = t.photo || '';
+  const btn = $('teachSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('teachCancelBtn').classList.remove('hidden');
+}
+function cancelEditTeacher(){ editingTeacherId=null; renderAdminBody(); }
 
 /* ---- ADMIN: CHAPTERS ---- */
 function renderAdminChapters(body){
+  editingChapterId = null;
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newChapSubj" onchange="filterChapterTeacherSelect()">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
@@ -1563,7 +1619,8 @@ function renderAdminChapters(body){
       <div class="field"><label>السنة/الدورة</label><input id="newChapYear" placeholder="2025"></div>
       <div class="field" style="max-width:80px;"><label>أيقونة</label><input id="newChapIcon" placeholder="📚"></div>
     </div>
-    <button class="btn-primary" onclick="addChapter()">+ إضافة فصل</button>
+    <button class="btn-primary" id="chapSubmitBtn" onclick="addChapter()">+ إضافة فصل</button>
+    <button class="btn-secondary hidden" id="chapCancelBtn" onclick="cancelEditChapter()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
       ${CHAPTERS.map(c=>{
         const sibs = CHAPTERS.filter(x=>x.teacherId===c.teacherId);
@@ -1580,6 +1637,7 @@ function renderAdminChapters(body){
           </div>
           <div class="mr-actions">
             <button class="${c.active!==false?'toggle-on':''}" onclick="toggleActive('chapters','${c.id}',${c.active!==false})">${ic(c.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="editChapter('${c.id}')">${ic('edit',15)}</button>
             <button class="del" onclick="deleteDoc('chapters','${c.id}','الفصل')">${ic('trash',15)}</button>
           </div>
         </div>`;
@@ -1594,16 +1652,39 @@ function filterChapterTeacherSelect(){
   teachSel.innerHTML = list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">لا يوجد مدرّس بهذه المادة</option>';
 }
 function teachName(id){ const t=TEACHERS.find(x=>x.id===id); return t?t.name:'—'; }
+let editingChapterId = null;
 function addChapter(){
   const teacherId = $('newChapTeach').value, title = $('newChapTitle').value.trim(),
         year = $('newChapYear').value.trim(), icon = $('newChapIcon').value.trim();
   if(!teacherId) return toast('أضف مدرّسًا أولًا');
   if(!title) return toast('اكتب عنوان الفصل');
   const teacher = TEACHERS.find(t=>t.id===teacherId);
+  if(editingChapterId){
+    db.collection('chapters').doc(editingChapterId).update({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚'})
+      .then(()=>{ toast('تم تحديث الفصل'); editingChapterId=null; renderAdminBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
   db.collection('chapters').add({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚', order: Date.now()})
     .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
+function editChapter(id){
+  const c = CHAPTERS.find(x=>x.id===id);
+  if(!c) return;
+  editingChapterId = id;
+  $('newChapSubj').value = c.subjectId || '';
+  filterChapterTeacherSelect();
+  $('newChapTeach').value = c.teacherId || '';
+  $('newChapTitle').value = c.title || '';
+  $('newChapYear').value = c.year || '';
+  $('newChapIcon').value = c.icon || '';
+  const btn = $('chapSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('chapCancelBtn').classList.remove('hidden');
+}
+function cancelEditChapter(){ editingChapterId=null; renderAdminBody(); }
 
 /* ---- ADMIN: LECTURES ---- */
 let draftServers = [{label:'سيرفر 1', url:''}];
@@ -1728,24 +1809,13 @@ function deleteDoc(col,id,label){
 }
 
 /* ---------------------------------------------------------------------- */
-/* PWA — قابل للتثبيت (Manifest عبر Blob + زر تثبيت عائم)                 */
-/* ملاحظة صريحة: تسجيل Service Worker يتطلب ملفًا حقيقيًا بنفس الأصل         */
-/* (لا يعمل من blob: URL في أغلب المتصفحات)، لذا للحصول على عمل أوفلاين      */
-/* كامل أضف ملف sw.js صغير بجانب هذا الملف عند الرفع للاستضافة.            */
+/* PWA — قابل للتثبيت فعليًا (manifest.json + sw.js ملفات حقيقية بجانب هذا الملف) */
 /* ---------------------------------------------------------------------- */
-const manifest = {
-  name: "ZEUS — ACADEMY", short_name: "ZEUS",
-  start_url: ".", display: "standalone",
-  background_color: "#070707", theme_color: "#070707",
-  icons: [{
-    src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23070706'/%3E%3Cpath d='M55 15 20 58h26l-9 33 45-58H55l9-18z' fill='%23F1B76D'/%3E%3C/svg%3E",
-    sizes:"192x192", type:"image/svg+xml"
-  }]
-};
-const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-const manifestLink = document.createElement('link');
-manifestLink.rel = 'manifest'; manifestLink.href = URL.createObjectURL(manifestBlob);
-document.head.appendChild(manifestLink);
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('SW register failed', err));
+  });
+}
 
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e)=>{
@@ -1763,6 +1833,7 @@ function doInstall(){
   $('installBanner').innerHTML = '';
   if(deferredPrompt){ deferredPrompt.prompt(); deferredPrompt=null; }
 }
+window.addEventListener('appinstalled', ()=>{ $('installBanner').innerHTML = ''; });
 
 /* ---------------------------------------------------------------------- */
 /* STATIC UI ICONS (elements that exist before any render() call)         */
