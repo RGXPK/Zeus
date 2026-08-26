@@ -870,7 +870,7 @@ function onNotesInput(){
 /* ---------------------------------------------------------------------- */
 function startListeners(){
   unsub.push(db.collection('subjects').orderBy('order').onSnapshot(snap=>{
-    SUBJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    SUBJECTS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     renderSubjects();
     if(cur.subjectId) renderTeachersTitle();
   }, err=>console.warn(err)));
@@ -881,20 +881,20 @@ function startListeners(){
   }, err=>console.warn(err)));
 
   unsub.push(db.collection('teachers').orderBy('order').onSnapshot(snap=>{
-    TEACHERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    TEACHERS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     updateHeroStats();
     if(!$('view-teachers').classList.contains('hidden')) renderTeachers();
     if(!$('view-subjects').classList.contains('hidden')) renderSubjects();
   }, err=>console.warn(err)));
 
   unsub.push(db.collection('chapters').orderBy('order').onSnapshot(snap=>{
-    CHAPTERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    CHAPTERS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     if(!$('view-chapters').classList.contains('hidden')) renderChapters();
     if(!$('view-teachers').classList.contains('hidden')) renderTeachers();
   }, err=>console.warn(err)));
 
   unsub.push(db.collection('lectures').orderBy('order').onSnapshot(snap=>{
-    LECTURES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    LECTURES = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     updateHeroStats();
     if(!$('view-lectures').classList.contains('hidden')) renderLectures();
     if(!$('view-chapters').classList.contains('hidden')) renderChapters();
@@ -925,7 +925,7 @@ let studentsUnsub = null;
 function startStudentsListener(){
   if(studentsUnsub) return;
   studentsUnsub = db.collection('students').orderBy('lastLoginAt','desc').onSnapshot(snap=>{
-    STUDENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    STUDENTS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     if(isAdmin && adminTab==='users') renderAdminBody();
   }, err=>console.warn(err));
 }
@@ -937,7 +937,7 @@ let assistantsUnsub = null;
 function startAssistantsListener(){
   if(assistantsUnsub) return;
   assistantsUnsub = db.collection('assistants').onSnapshot(snap=>{
-    ASSISTANTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    ASSISTANTS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
     if(isAdmin && adminTab==='assistants') renderAdminBody();
   }, err=>console.warn(err));
 }
@@ -1292,7 +1292,7 @@ auth.onAuthStateChanged(user=>{
     if(user){
       db.collection('assistants').doc(user.uid).get().then(snap=>{
         isAssistant = snap.exists;
-        assistantData = snap.exists ? {id:snap.id, ...snap.data()} : null;
+        assistantData = snap.exists ? Object.assign({id:snap.id}, snap.data()) : null;
         $('adminFab').classList.toggle('hidden', !isAssistant);
         renderAuthChip();
         if(!isAssistant){ ensureStudentDocExists(user); startHeartbeat(); }
@@ -1494,7 +1494,7 @@ function addChapterAssistant(){
       .catch(e=>toast('خطأ: '+e.message));
     return;
   }
-  db.collection('chapters').add({...data, order: Date.now()})
+  db.collection('chapters').add(Object.assign({}, data, {order: Date.now()}))
     .then(()=>{ toast('تمت الإضافة'); renderAssistantBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
@@ -1820,7 +1820,7 @@ function signupChartHTML(){
     const key = d.toISOString().slice(0,10);
     if(counts[key]!==undefined) counts[key]++;
   });
-  const max = Math.max(1, ...Object.values(counts));
+  const max = Object.values(counts).reduce(function(a,b){ return Math.max(a,b); }, 1);
   return `<div class="signup-chart">${days.map(({key,date})=>{
     const v = counts[key];
     const h = Math.max(Math.round((v/max)*100), v>0?8:2);
