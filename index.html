@@ -625,7 +625,6 @@ img{max-width:100%; display:block;}
   <div id="searchResults" class="search-results hidden"></div>
 
   <div id="homeContent">
-    <div id="announcementSlot"></div>
     <div id="continueWatchSlot"></div>
     <div class="section-label"><span class="dot"></span>المواد الدراسية</div>
     <div id="subjectsGrid" class="grid-subjects"></div>
@@ -878,7 +877,7 @@ function startListeners(){
 
   unsub.push(db.collection('settings').doc('announcement').onSnapshot(snap=>{
     ANNOUNCEMENT = snap.exists ? snap.data() : null;
-    renderAnnouncementBanner();
+    maybeShowAnnouncementPopup();
   }, err=>console.warn(err)));
 
   unsub.push(db.collection('teachers').orderBy('order').onSnapshot(snap=>{
@@ -1283,6 +1282,7 @@ auth.onAuthStateChanged(user=>{
   isAdmin = !!(user && user.uid === ADMIN_UID);
   isAssistant = false; assistantData = null;
   $('authGate').classList.toggle('hidden', !!user);
+  if(user) maybeShowAnnouncementPopup();
   if(isAdmin){
     startStudentsListener(); startAssistantsListener();
     $('adminFab').classList.toggle('hidden', false);
@@ -2411,27 +2411,36 @@ function saveLastWatched(lecture){
   }));
 }
 /* ---------------------------------------------------------------------- */
-/* ANNOUNCEMENT BANNER (رسالة ترحيب/إعلان يضبطها الأدمن)                  */
+/* ANNOUNCEMENT POPUP (رسالة ترحيب/إعلان يضبطها الأدمن — تنبثق وتختفي)     */
 /* ---------------------------------------------------------------------- */
 const ANNOUNCE_DISMISS_KEY = 'zeus_announce_dismissed';
-function renderAnnouncementBanner(){
-  const slot = $('announcementSlot');
-  if(!slot) return;
-  if(!ANNOUNCEMENT || !ANNOUNCEMENT.active || !(ANNOUNCEMENT.text||'').trim()){
-    slot.innerHTML = ''; return;
-  }
-  const hash = (ANNOUNCEMENT.text||'').length + ':' + (ANNOUNCEMENT.updatedAt ? String(ANNOUNCEMENT.updatedAt.seconds||'') : '');
-  if(localStorage.getItem(ANNOUNCE_DISMISS_KEY) === hash){ slot.innerHTML=''; return; }
-  slot.innerHTML = `
-    <div class="announce-banner">
-      <div class="an-icon">${ic('megaphone',17)}</div>
-      <div class="an-text">${esc(ANNOUNCEMENT.text)}</div>
-      <button class="an-close" onclick="dismissAnnouncement('${esc(hash)}')">${ic('close',14)}</button>
+let announcementLastShownHash = null;
+function announcementHash(){
+  return (ANNOUNCEMENT.text||'').length + ':' + (ANNOUNCEMENT.updatedAt ? String(ANNOUNCEMENT.updatedAt.seconds||'') : '');
+}
+function maybeShowAnnouncementPopup(){
+  if(!ANNOUNCEMENT || !ANNOUNCEMENT.active || !(ANNOUNCEMENT.text||'').trim()) return;
+  if(!currentUser) return; // ننتظر لين يتعدى بوابة الدخول
+  if(!$('authGate').classList.contains('hidden')) return;
+  const hash = announcementHash();
+  if(localStorage.getItem(ANNOUNCE_DISMISS_KEY) === hash) return;
+  if(announcementLastShownHash === hash && $('modalHost').innerHTML.includes('announce-popup')) return;
+  announcementLastShownHash = hash;
+  $('modalHost').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this) dismissAnnouncement('${esc(hash)}')">
+      <div class="modal-sheet announce-popup" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div style="text-align:center;">
+          <div class="an-icon" style="margin:0 auto 14px;width:48px;height:48px;">${ic('megaphone',22)}</div>
+          <div style="font-size:13.5px;line-height:1.9;color:var(--text);white-space:pre-wrap;">${esc(ANNOUNCEMENT.text)}</div>
+        </div>
+        <button class="btn-primary" style="margin-top:20px;" onclick="dismissAnnouncement('${esc(hash)}')">تمام، فهمت</button>
+      </div>
     </div>`;
 }
 function dismissAnnouncement(hash){
   localStorage.setItem(ANNOUNCE_DISMISS_KEY, hash);
-  $('announcementSlot').innerHTML = '';
+  closeModal();
 }
 
 function renderContinueWatch(){
