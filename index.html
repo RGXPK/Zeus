@@ -203,6 +203,21 @@ img{max-width:100%; display:block;}
 .sr-row .sr-title{font-weight:700; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .sr-row .sr-path{font-size:10.5px; color:var(--text-faint); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
+/* ---------- announcement banner ---------- */
+.announce-banner{
+  display:flex; align-items:flex-start; gap:12px;
+  background:linear-gradient(120deg,var(--teal-glow),transparent);
+  border:1px solid rgba(45,212,200,.35); border-radius:18px;
+  padding:14px; margin-bottom:20px;
+}
+.announce-banner .an-icon{
+  width:36px; height:36px; border-radius:50%; flex-shrink:0;
+  background:var(--teal-glow); border:1px solid rgba(45,212,200,.4); color:var(--teal);
+  display:flex; align-items:center; justify-content:center;
+}
+.announce-banner .an-text{flex:1; min-width:0; font-size:12.5px; line-height:1.8; color:var(--text); padding-top:6px;}
+.announce-banner .an-close{color:var(--text-faint); flex-shrink:0; padding:4px;}
+
 /* ---------- continue watching ---------- */
 .continue-card{
   display:flex; align-items:center; gap:14px;
@@ -610,6 +625,7 @@ img{max-width:100%; display:block;}
   <div id="searchResults" class="search-results hidden"></div>
 
   <div id="homeContent">
+    <div id="announcementSlot"></div>
     <div id="continueWatchSlot"></div>
     <div class="section-label"><span class="dot"></span>المواد الدراسية</div>
     <div id="subjectsGrid" class="grid-subjects"></div>
@@ -657,7 +673,7 @@ img{max-width:100%; display:block;}
   <button class="nav-btn active" data-tab="subjects" onclick="navTab('subjects')"><span class="ni" data-icon="grid"></span>المواد</button>
 </div>
 
-<button class="admin-fab hidden" id="adminFab" onclick="openAdmin()"></button>
+<button class="admin-fab hidden" id="adminFab" onclick="openAdminOrAssistant()"></button>
 <div id="toast" class="toast"></div>
 <div id="installBanner"></div>
 
@@ -761,7 +777,8 @@ try {
 /* ---------------------------------------------------------------------- */
 /* STATE                                                                   */
 /* ---------------------------------------------------------------------- */
-let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [];
+let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [], ASSISTANTS = [];
+let ANNOUNCEMENT = null;
 let cur = { subjectId:null, teacherId:null, chapterId:null };
 let isAdmin = false;
 let currentUser = null; // any authenticated user (student or admin)
@@ -790,6 +807,9 @@ const ICONS = {
   eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
   notebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>',
+  megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   bookOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
@@ -856,6 +876,11 @@ function startListeners(){
     if(cur.subjectId) renderTeachersTitle();
   }, err=>console.warn(err)));
 
+  unsub.push(db.collection('settings').doc('announcement').onSnapshot(snap=>{
+    ANNOUNCEMENT = snap.exists ? snap.data() : null;
+    renderAnnouncementBanner();
+  }, err=>console.warn(err)));
+
   unsub.push(db.collection('teachers').orderBy('order').onSnapshot(snap=>{
     TEACHERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
     updateHeroStats();
@@ -908,6 +933,18 @@ function startStudentsListener(){
 function stopStudentsListener(){
   if(studentsUnsub){ studentsUnsub(); studentsUnsub = null; }
   STUDENTS = [];
+}
+let assistantsUnsub = null;
+function startAssistantsListener(){
+  if(assistantsUnsub) return;
+  assistantsUnsub = db.collection('assistants').onSnapshot(snap=>{
+    ASSISTANTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(isAdmin && adminTab==='assistants') renderAdminBody();
+  }, err=>console.warn(err));
+}
+function stopAssistantsListener(){
+  if(assistantsUnsub){ assistantsUnsub(); assistantsUnsub = null; }
+  ASSISTANTS = [];
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1207,7 +1244,7 @@ $('themeBtn').addEventListener('click', ()=>{
 /* =========================================================================
    ADMIN — تسجيل دخول + لوحة تحكم كاملة (Subjects / Teachers / Chapters / Lectures / Users)
    ========================================================================= */
-$('adminBtn').addEventListener('click', ()=> isAdmin ? openAdmin() : openAdminLogin());
+$('adminBtn').addEventListener('click', ()=>{ if(isAdmin) return openAdmin(); if(isAssistant) return openAssistantPanel(); openAdminLogin(); });
 function openAdminLogin(){
   $('modalHost').innerHTML = `
   <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
@@ -1240,14 +1277,77 @@ function doAdminLogin(){
 }
 
 /* ---- global auth state (covers both admin and students) ---- */
+let isAssistant = false, assistantData = null;
 auth.onAuthStateChanged(user=>{
   currentUser = user;
   isAdmin = !!(user && user.uid === ADMIN_UID);
-  $('adminFab').classList.toggle('hidden', !isAdmin);
-  renderAuthChip();
+  isAssistant = false; assistantData = null;
   $('authGate').classList.toggle('hidden', !!user);
-  if(isAdmin) startStudentsListener(); else stopStudentsListener();
+  if(isAdmin){
+    startStudentsListener(); startAssistantsListener();
+    $('adminFab').classList.toggle('hidden', false);
+    renderAuthChip();
+  } else {
+    stopStudentsListener(); stopAssistantsListener();
+    if(user){
+      db.collection('assistants').doc(user.uid).get().then(snap=>{
+        isAssistant = snap.exists;
+        assistantData = snap.exists ? {id:snap.id, ...snap.data()} : null;
+        $('adminFab').classList.toggle('hidden', !isAssistant);
+        renderAuthChip();
+        if(!isAssistant){ ensureStudentDocExists(user); startHeartbeat(); }
+        else stopHeartbeat();
+      }).catch(()=>{ $('adminFab').classList.toggle('hidden', true); renderAuthChip(); });
+    } else {
+      $('adminFab').classList.toggle('hidden', true);
+      renderAuthChip();
+      stopHeartbeat();
+    }
+  }
 });
+/* ---------------------------------------------------------------------- */
+/* PRESENCE / HEARTBEAT — "آخر نشاط" و"نشط الآن" لكل طالب                  */
+/* ---------------------------------------------------------------------- */
+const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // آخر نبضة خلال دقيقتين = "نشط الآن"
+let heartbeatTimer = null;
+function startHeartbeat(){
+  if(heartbeatTimer) return;
+  sendHeartbeat();
+  heartbeatTimer = setInterval(sendHeartbeat, 60000);
+  document.addEventListener('visibilitychange', onHeartbeatVisibility);
+}
+function onHeartbeatVisibility(){
+  if(document.visibilityState === 'visible') sendHeartbeat();
+}
+function sendHeartbeat(){
+  if(!currentUser || currentUser.uid === ADMIN_UID || isAssistant) return;
+  db.collection('students').doc(currentUser.uid).set({
+    lastActiveAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, {merge:true}).catch(()=>{});
+}
+function stopHeartbeat(){
+  if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer=null; }
+  document.removeEventListener('visibilitychange', onHeartbeatVisibility);
+}
+/* يصلح حسابات سجّلت أو دخلت قبل ما تنحل مشكلة الصلاحيات — يتأكد كل مرة
+   يفتح فيها الموقع (مو بس عند تسجيل دخول جديد) أن سجل الطالب موجود فعليًا. */
+function ensureStudentDocExists(user){
+  if(user.uid === ADMIN_UID) return;
+  db.collection('students').doc(user.uid).get().then(snap=>{
+    if(snap.exists) return;
+    db.collection('students').doc(user.uid).set({
+      name: user.displayName || '',
+      email: user.email || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+      loginCount: 1
+    }).catch(err=>console.warn('student self-heal failed', err));
+  }).catch(err=>console.warn('student self-heal check failed', err));
+}
+function openAdminOrAssistant(){
+  if(isAdmin) return openAdmin();
+  if(isAssistant) return openAssistantPanel();
+}
 function translateAuthErr(err){
   const c = err.code || '';
   if(c.includes('user-not-found')) return 'الحساب غير موجود';
@@ -1275,6 +1375,13 @@ function renderAdmin(){
         <button class="admin-tab ${adminTab==='chapters'?'active':''}" onclick="setAdminTab('chapters')">الفصول</button>
         <button class="admin-tab ${adminTab==='lectures'?'active':''}" onclick="setAdminTab('lectures')">المحاضرات</button>
         <button class="admin-tab ${adminTab==='users'?'active':''}" onclick="setAdminTab('users')">${ic('users',13)} المستخدمين</button>
+        <button class="admin-tab ${adminTab==='assistants'?'active':''}" onclick="setAdminTab('assistants')">${ic('users',13)} المساعدين</button>
+        <button class="admin-tab ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">${ic('settings',13)} الإعدادات</button>
+      </div>
+      <div class="search-bar" style="margin-bottom:14px;">
+        <span class="icn" style="width:15px;height:15px;">${ic('search',15)}</span>
+        <input id="adminSearchInput" type="text" placeholder="بحث بهذا القسم..." value="${esc(adminSearchQuery)}" oninput="onAdminSearchInput(this.value)">
+        <button class="sb-clear icn" style="width:13px;height:13px;${adminSearchQuery?'display:flex;':''}" onclick="onAdminSearchInput('')">${ic('close',13)}</button>
       </div>
       <div id="adminBody"></div>
       <button class="btn-secondary" onclick="doLogout()">تسجيل خروج</button>
@@ -1282,8 +1389,215 @@ function renderAdmin(){
   </div>`;
   renderAdminBody();
 }
-function setAdminTab(t){ adminTab=t; renderAdminBody(); }
+let adminSearchQuery = '';
+function onAdminSearchInput(v){
+  adminSearchQuery = v;
+  const clearBtn = document.querySelector('#modalHost .sb-clear');
+  if(clearBtn) clearBtn.style.display = v ? 'flex' : 'none';
+  renderAdminBody(true);
+}
+function adminMatches(text){
+  if(!adminSearchQuery.trim()) return true;
+  return (text||'').toLowerCase().includes(adminSearchQuery.trim().toLowerCase());
+}
+function setAdminTab(t){
+  adminTab=t; adminSearchQuery='';
+  editingSubjectId=null; editingTeacherId=null; editingChapterId=null; editingLectureId=null;
+  renderAdminBody();
+}
 function doLogout(){ auth.signOut(); closeModal(); }
+
+/* =========================================================================
+   ASSISTANT PANEL — لوحة محدودة لمساعد المدرّس (فصول + محاضرات لمادته فقط)
+   ========================================================================= */
+let assistantTab = 'chapters';
+function openAssistantPanel(){
+  if(!assistantData) return;
+  assistantTab = 'chapters';
+  renderAssistantPanelUI();
+}
+function renderAssistantPanelUI(){
+  $('modalHost').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">لوحة المساعد — ${esc(subjName(assistantData.subjectId))} <button class="icon-btn" onclick="closeModal()">${ic('close',15)}</button></div>
+      <div class="admin-tabs">
+        <button class="admin-tab ${assistantTab==='chapters'?'active':''}" onclick="setAssistantTab('chapters')">الفصول</button>
+        <button class="admin-tab ${assistantTab==='lectures'?'active':''}" onclick="setAssistantTab('lectures')">المحاضرات</button>
+      </div>
+      <div id="adminBody"></div>
+      <button class="btn-secondary" onclick="doLogout()">تسجيل خروج</button>
+    </div>
+  </div>`;
+  renderAssistantBody();
+}
+function setAssistantTab(t){
+  assistantTab = t;
+  editingChapterAsstId = null; editingLectureAsstId = null;
+  renderAssistantBody();
+}
+function renderAssistantBody(){
+  const body = $('adminBody');
+  if(assistantTab==='chapters') return renderAssistantChapters(body);
+  if(assistantTab==='lectures') return renderAssistantLectures(body);
+}
+
+let editingChapterAsstId = null;
+function renderAssistantChapters(body){
+  const mySubjId = assistantData.subjectId;
+  const myTeachers = TEACHERS.filter(t=>t.subjectId===mySubjId);
+  const myChapters = CHAPTERS.filter(c=>c.subjectId===mySubjId);
+  body.innerHTML = `
+    <div class="field"><label>المدرّس</label>
+      <select id="asstChapTeach">${myTeachers.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">لا يوجد مدرّسين بمادتك بعد — اطلب من الأدمن يضيف واحد</option>'}</select>
+    </div>
+    <div class="field"><label>عنوان الفصل</label><input id="asstChapTitle" placeholder="مثال: الفصل الأول"></div>
+    <div class="field-row">
+      <div class="field"><label>السنة/الدورة</label><input id="asstChapYear" placeholder="2025"></div>
+      <div class="field" style="max-width:80px;"><label>أيقونة</label><input id="asstChapIcon" placeholder="📚"></div>
+    </div>
+    <button class="btn-primary" id="asstChapSubmitBtn" onclick="addChapterAssistant()">+ إضافة فصل</button>
+    <button class="btn-secondary hidden" id="asstChapCancelBtn" onclick="cancelEditChapterAssistant()">إلغاء التعديل</button>
+    <div style="margin-top:18px;">
+      ${myChapters.map(c=>{
+        const sibs = myChapters.filter(x=>x.teacherId===c.teacherId);
+        const i = sibs.findIndex(x=>x.id===c.id);
+        return `
+        <div class="manage-row ${c.active===false?'inactive':''}">
+          <div class="mr-reorder">
+            <button ${i===0?'disabled':''} onclick="reorderItem('chapters', CHAPTERS.filter(x=>x.teacherId==='${c.teacherId}'), '${c.id}', -1)">${ic('chevronUp',12)}</button>
+            <button ${i===sibs.length-1?'disabled':''} onclick="reorderItem('chapters', CHAPTERS.filter(x=>x.teacherId==='${c.teacherId}'), '${c.id}', 1)">${ic('chevronDown',12)}</button>
+          </div>
+          <div>
+            <div class="mr-title">${c.active===false?'<span class="inactive-badge">معطّل</span>':''}${esc(c.title)}</div>
+            <div class="mr-sub">${esc(teachName(c.teacherId))}${c.year?(' — '+esc(c.year)):''}</div>
+          </div>
+          <div class="mr-actions">
+            <button class="${c.active!==false?'toggle-on':''}" onclick="toggleActive('chapters','${c.id}',${c.active!==false})">${ic(c.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="editChapterAssistant('${c.id}')">${ic('edit',15)}</button>
+            <button class="del" onclick="deleteDoc('chapters','${c.id}','الفصل')">${ic('trash',15)}</button>
+          </div>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد فصول بعد</div>'}
+    </div>`;
+}
+function addChapterAssistant(){
+  const teacherId = $('asstChapTeach').value, title = $('asstChapTitle').value.trim(),
+        year = $('asstChapYear').value.trim(), icon = $('asstChapIcon').value.trim();
+  if(!teacherId) return toast('لا يوجد مدرّسين بمادتك بعد');
+  if(!title) return toast('اكتب عنوان الفصل');
+  const data = {teacherId, subjectId: assistantData.subjectId, title, year, icon: icon||'📚'};
+  if(editingChapterAsstId){
+    db.collection('chapters').doc(editingChapterAsstId).update(data)
+      .then(()=>{ toast('تم التحديث'); editingChapterAsstId=null; renderAssistantBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
+  db.collection('chapters').add({...data, order: Date.now()})
+    .then(()=>{ toast('تمت الإضافة'); renderAssistantBody(); })
+    .catch(e=>toast('خطأ: '+e.message));
+}
+function editChapterAssistant(id){
+  const c = CHAPTERS.find(x=>x.id===id);
+  if(!c) return;
+  editingChapterAsstId = id;
+  $('asstChapTeach').value = c.teacherId || '';
+  $('asstChapTitle').value = c.title || '';
+  $('asstChapYear').value = c.year || '';
+  $('asstChapIcon').value = c.icon || '';
+  const btn = $('asstChapSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('asstChapCancelBtn').classList.remove('hidden');
+}
+function cancelEditChapterAssistant(){ editingChapterAsstId=null; renderAssistantBody(); }
+
+let editingLectureAsstId = null, draftServersAsst = [{label:'سيرفر 1', url:''}];
+function renderAssistantLectures(body){
+  const mySubjId = assistantData.subjectId;
+  const myChapters = CHAPTERS.filter(c=>c.subjectId===mySubjId);
+  const myChapterIds = myChapters.map(c=>c.id);
+  const myLectures = LECTURES.filter(l=>myChapterIds.includes(l.chapterId));
+  body.innerHTML = `
+    <div class="field"><label>الفصل</label>
+      <select id="asstLecChap">${myChapters.map(c=>`<option value="${c.id}">${esc(c.title)} — ${esc(teachName(c.teacherId))}</option>`).join('') || '<option value="">أضف فصلًا أولًا</option>'}</select>
+    </div>
+    <div class="field"><label>عنوان المحاضرة</label><input id="asstLecTitle" placeholder="مثال: محاضرة 1 — مقدمة"></div>
+    <div class="field"><label>روابط السيرفرات (يوتيوب / Google Drive / رامبل / رابط MP4 مباشر)</label>
+      <div id="asstServerInputs"></div>
+      <button type="button" class="add-server-btn" onclick="addServerFieldAsst()">+ إضافة سيرفر آخر</button>
+    </div>
+    <button class="btn-primary" id="asstLecSubmitBtn" onclick="addLectureAssistant()">+ إضافة محاضرة</button>
+    <button class="btn-secondary hidden" id="asstLecCancelBtn" onclick="cancelEditLectureAssistant()">إلغاء التعديل</button>
+    <div style="margin-top:18px;">
+      ${myLectures.map(l=>{
+        const sibs = myLectures.filter(x=>x.chapterId===l.chapterId);
+        const i = sibs.findIndex(x=>x.id===l.id);
+        return `
+        <div class="manage-row ${l.active===false?'inactive':''}">
+          <div class="mr-reorder">
+            <button ${i===0?'disabled':''} onclick="reorderItem('lectures', LECTURES.filter(x=>x.chapterId==='${l.chapterId}'), '${l.id}', -1)">${ic('chevronUp',12)}</button>
+            <button ${i===sibs.length-1?'disabled':''} onclick="reorderItem('lectures', LECTURES.filter(x=>x.chapterId==='${l.chapterId}'), '${l.id}', 1)">${ic('chevronDown',12)}</button>
+          </div>
+          <div>
+            <div class="mr-title">${l.active===false?'<span class="inactive-badge">معطّلة</span>':''}${esc(l.title)}</div>
+            <div class="mr-sub">${esc(chapTitle(l.chapterId))} • ${(l.servers||[]).length} سيرفر</div>
+          </div>
+          <div class="mr-actions">
+            <button class="${l.active!==false?'toggle-on':''}" onclick="toggleActive('lectures','${l.id}',${l.active!==false})">${ic(l.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="duplicateLecture('${l.id}')">${ic('copy',15)}</button>
+            <button onclick="editLectureAssistant('${l.id}')">${ic('edit',15)}</button>
+            <button class="del" onclick="deleteDoc('lectures','${l.id}','المحاضرة')">${ic('trash',15)}</button>
+          </div>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد محاضرات بعد</div>'}
+    </div>`;
+  draftServersAsst = [{label:'سيرفر 1', url:''}];
+  renderServerInputsAsst();
+}
+function renderServerInputsAsst(){
+  $('asstServerInputs').innerHTML = draftServersAsst.map((s,i)=>`
+    <div class="server-input-row">
+      <input placeholder="اسم السيرفر" value="${esc(s.label)}" oninput="draftServersAsst[${i}].label=this.value">
+      <input placeholder="الرابط" value="${esc(s.url)}" oninput="draftServersAsst[${i}].url=this.value" style="flex:2;">
+      ${draftServersAsst.length>1?`<button onclick="removeServerFieldAsst(${i})">${ic('close',13)}</button>`:''}
+    </div>
+  `).join('');
+}
+function addServerFieldAsst(){ draftServersAsst.push({label:'سيرفر '+(draftServersAsst.length+1), url:''}); renderServerInputsAsst(); }
+function removeServerFieldAsst(i){ draftServersAsst.splice(i,1); renderServerInputsAsst(); }
+function addLectureAssistant(){
+  const chapterId = $('asstLecChap').value, title = $('asstLecTitle').value.trim();
+  if(!chapterId) return toast('أضف فصلًا أولًا');
+  if(!title) return toast('اكتب عنوان المحاضرة');
+  const servers = draftServersAsst.filter(s=>s.url.trim());
+  if(!servers.length) return toast('أضف رابط سيرفر واحد على الأقل');
+  if(editingLectureAsstId){
+    db.collection('lectures').doc(editingLectureAsstId).update({chapterId, title, servers})
+      .then(()=>{ toast('تم التحديث'); editingLectureAsstId=null; renderAssistantBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
+  db.collection('lectures').add({chapterId, title, servers, order: Date.now()})
+    .then(()=>{ toast('تمت الإضافة'); renderAssistantBody(); })
+    .catch(e=>toast('خطأ: '+e.message));
+}
+function editLectureAssistant(id){
+  const l = LECTURES.find(x=>x.id===id);
+  if(!l) return;
+  editingLectureAsstId = id;
+  $('asstLecChap').value = l.chapterId || '';
+  $('asstLecTitle').value = l.title || '';
+  draftServersAsst = (l.servers && l.servers.length) ? l.servers.map(s=>({label:s.label, url:s.url})) : [{label:'سيرفر 1', url:''}];
+  renderServerInputsAsst();
+  const btn = $('asstLecSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('asstLecCancelBtn').classList.remove('hidden');
+}
+function cancelEditLectureAssistant(){ editingLectureAsstId=null; renderAssistantBody(); }
+
 
 /* =========================================================================
    STUDENT AUTH — تسجيل دخول/حساب جديد للطلاب (مطلوب لفتح تشغيل المحاضرات)
@@ -1346,12 +1660,15 @@ function doStudentLogout(){ auth.signOut(); closeModal(); toast('تم تسجيل
    كل دخول ناجح "يُصلح" السجل تلقائيًا بدل ما يفشل بصمت. */
 function upsertStudentOnLogin(user){
   if(user.uid === ADMIN_UID) return Promise.resolve();
-  return db.collection('students').doc(user.uid).set({
-    name: user.displayName || '',
-    email: user.email || '',
-    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-    loginCount: firebase.firestore.FieldValue.increment(1)
-  }, {merge:true}).catch(err=>console.warn('student upsert failed', err));
+  return db.collection('assistants').doc(user.uid).get().then(snap=>{
+    if(snap.exists) return; // حسابات المساعدين ما تنحسب كطلاب
+    return db.collection('students').doc(user.uid).set({
+      name: user.displayName || '',
+      email: user.email || '',
+      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+      loginCount: firebase.firestore.FieldValue.increment(1)
+    }, {merge:true});
+  }).catch(err=>console.warn('student upsert failed', err));
 }
 
 /* =========================================================================
@@ -1432,27 +1749,60 @@ function renderAdminBody(){
   if(adminTab==='chapters') return renderAdminChapters(body);
   if(adminTab==='lectures') return renderAdminLectures(body);
   if(adminTab==='users') return renderAdminUsers(body);
+  if(adminTab==='assistants') return renderAdminAssistants(body);
+  if(adminTab==='settings') return renderAdminSettings(body);
 }
 
 /* ---- ADMIN: USERS (من سجّل حساب / سجّل دخول) ---- */
 function renderAdminUsers(body){
+  const onlineCount = STUDENTS.filter(s=>isOnlineNow(s.lastActiveAt)).length;
   body.innerHTML = `
-    <div style="text-align:center;padding:20px;margin-bottom:18px;background:var(--bg-elev);border:1px solid var(--card-border);border-radius:14px;">
-      <div style="font-size:32px;font-weight:900;color:var(--teal);">${STUDENTS.length}</div>
-      <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">مستخدم مسجّل</div>
+    <div style="display:flex; gap:10px; margin-bottom:18px;">
+      <div style="flex:1;text-align:center;padding:20px 10px;background:var(--bg-elev);border:1px solid var(--card-border);border-radius:14px;">
+        <div style="font-size:32px;font-weight:900;color:var(--teal);">${STUDENTS.length}</div>
+        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">مستخدم مسجّل</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:20px 10px;background:var(--bg-elev);border:1px solid rgba(45,212,200,.3);border-radius:14px;">
+        <div style="font-size:32px;font-weight:900;color:var(--teal);">${onlineCount}</div>
+        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">🟢 نشط الآن</div>
+      </div>
     </div>
     <div class="section-label" style="margin-bottom:10px;"><span class="dot"></span>الدخول خلال آخر 7 أيام</div>
     ${signupChartHTML()}
-    ${STUDENTS.map(s=>`
+    ${STUDENTS.filter(s=>adminMatches(s.name)||adminMatches(s.email)).map(s=>{
+      const online = isOnlineNow(s.lastActiveAt);
+      return `
       <div class="manage-row">
-        <div class="teacher-avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0;">${esc((s.name||'?')[0])}</div>
+        <div class="teacher-avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0;position:relative;">
+          ${esc((s.name||'?')[0])}
+          ${online?'<span style="position:absolute;bottom:-1px;left:-1px;width:11px;height:11px;border-radius:50%;background:#2ecc71;border:2px solid var(--bg-elev);"></span>':''}
+        </div>
         <div style="flex:1;min-width:0;">
           <div class="mr-title">${esc(s.name||'—')}</div>
-          <div class="mr-sub">${esc(s.email||'')} • دخل ${s.loginCount||1} مرة${s.lastLoginAt?(' • آخر دخول '+fmtDate(s.lastLoginAt)):''}</div>
+          <div class="mr-sub">${esc(s.email||'')} • دخل ${s.loginCount||1} مرة</div>
+          <div class="mr-sub" style="margin-top:2px;">
+            ${online ? '<span style="color:#2ecc71;font-weight:800;">🟢 نشط الآن</span>' : `آخر نشاط: ${fmtDateTime(s.lastActiveAt || s.lastLoginAt)}`}
+          </div>
         </div>
-      </div>
-    `).join('') || '<div style="color:var(--text-faint);font-size:12.5px;text-align:center;padding:20px 0;">لا يوجد مستخدمين مسجّلين بعد</div>'}
+      </div>`;
+    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;text-align:center;padding:20px 0;">لا يوجد مستخدمين مسجّلين بعد</div>'}
   `;
+}
+function isOnlineNow(ts){
+  if(!ts) return false;
+  try{
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return (Date.now() - d.getTime()) < ONLINE_THRESHOLD_MS;
+  }catch(e){ return false; }
+}
+function fmtDateTime(ts){
+  if(!ts) return 'غير معروف';
+  try{
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    const datePart = d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'});
+    const timePart = d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+    return `${datePart} — ${timePart}`;
+  }catch(e){ return ''; }
 }
 function signupChartHTML(){
   const days = [], counts = {};
@@ -1486,10 +1836,87 @@ function fmtDate(ts){
   try{ const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'}); }catch(e){ return ''; }
 }
 
+/* ---- ADMIN: ASSISTANTS (دعوة مدرّس مساعد بصلاحيات محدودة لمادته) ---- */
+function renderAdminAssistants(body){
+  body.innerHTML = `
+    <div class="field"><label>المادة المسؤول عنها</label>
+      <select id="newAsstSubj">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
+    </div>
+    <div class="field"><label>اسم المساعد</label><input id="newAsstName" placeholder="مثال: أ. محمد"></div>
+    <div class="field"><label>البريد الإلكتروني</label><input id="newAsstEmail" type="email" placeholder="assistant@example.com"></div>
+    <div class="field"><label>كلمة المرور</label><input id="newAsstPass" type="password" placeholder="6 أحرف على الأقل"></div>
+    <button class="btn-primary" id="asstInviteBtn" onclick="inviteAssistant()">${ic('userPlus',14)} دعوة مساعد</button>
+    <div style="font-size:11px;color:var(--text-faint);margin:12px 0 4px;line-height:1.8;">
+      المساعد يسجّل دخول بنفس بوابة الموقع بهذا البريد وكلمة المرور، وبيشوف لوحة محدودة تخلّيه يضيف فصول ومحاضرات لمادته بس — بدون وصول لبقية المواد أو المدرّسين أو المستخدمين أو الإعدادات.
+    </div>
+    <div style="margin-top:14px;">
+      ${ASSISTANTS.filter(a=>adminMatches(a.name)||adminMatches(a.email)).map(a=>`
+        <div class="manage-row">
+          <div class="teacher-avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0;">${esc((a.name||'?')[0])}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="mr-title">${esc(a.name||'—')}</div>
+            <div class="mr-sub">${esc(a.email||'')} • ${esc(subjName(a.subjectId))}</div>
+          </div>
+          <div class="mr-actions">
+            <button class="del" onclick="deleteDoc('assistants','${a.id}','المساعد')">${ic('trash',15)}</button>
+          </div>
+        </div>
+      `).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا يوجد مساعدين بعد</div>'}
+    </div>`;
+}
+function createAssistantAccount(name, email, password, subjectId){
+  const secondaryApp = firebase.apps.find(a=>a.name==='Secondary') || firebase.initializeApp(firebaseConfig, 'Secondary');
+  const secAuth = secondaryApp.auth();
+  return secAuth.createUserWithEmailAndPassword(email, password)
+    .then(cred => cred.user.updateProfile({displayName:name}).then(()=>
+      db.collection('assistants').doc(cred.user.uid).set({
+        name, email, subjectId,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      })
+    ).then(()=> secAuth.signOut()));
+}
+function inviteAssistant(){
+  const subjectId = $('newAsstSubj').value, name = $('newAsstName').value.trim(),
+        email = $('newAsstEmail').value.trim(), pass = $('newAsstPass').value;
+  if(!subjectId) return toast('أضف مادة أولًا');
+  if(!name) return toast('اكتب اسم المساعد');
+  if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
+  if(pass.length<6) return toast('كلمة المرور 6 أحرف على الأقل');
+  const btn = $('asstInviteBtn');
+  btn.disabled = true;
+  createAssistantAccount(name, email, pass, subjectId)
+    .then(()=>{ toast('تمت دعوة المساعد بنجاح'); renderAdminBody(); })
+    .catch(e=>{ toast('خطأ: '+translateAuthErr(e)); btn.disabled = false; });
+}
+
+/* ---- ADMIN: SETTINGS (رسالة ترحيب/إعلان) ---- */
+function renderAdminSettings(body){
+  const cur = ANNOUNCEMENT || {text:'', active:true};
+  body.innerHTML = `
+    <div class="field">
+      <label>رسالة ترحيب / إعلان (تظهر أعلى الصفحة الرئيسية للطلاب)</label>
+      <textarea id="announceText" placeholder="مثال: امتحان الفصل الأول الأسبوع الجاي، جهّزوا نفسكم 💪">${esc(cur.text||'')}</textarea>
+    </div>
+    <button class="btn-primary" onclick="saveAnnouncement(true)">💾 حفظ ونشر الرسالة</button>
+    ${cur.text ? `<button class="btn-secondary" onclick="saveAnnouncement(false)">🗑 حذف الرسالة الحالية</button>` : ''}
+    <div style="font-size:11px;color:var(--text-faint);margin-top:14px;line-height:1.8;">
+      الرسالة تظهر لكل الطلاب أعلى الصفحة الرئيسية، وتختفي عندهم لو ضغطوا ✕ (تختفي عندهم فقط، مو بشكل عام). أي تعديل جديد بالرسالة يخليها تظهر عندهم من جديد حتى لو كانوا سكّروها قبل.
+    </div>`;
+}
+function saveAnnouncement(active){
+  const text = $('announceText').value.trim();
+  if(active && !text) return toast('اكتب نص الرسالة أولًا');
+  db.collection('settings').doc('announcement').set({
+    text: active ? text : '',
+    active,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>toast(active?'تم النشر':'تم حذف الرسالة'))
+    .catch(e=>toast('خطأ: '+e.message));
+}
+
 /* ---- ADMIN: SUBJECTS ---- */
 let editingSubjectId = null;
 function renderAdminSubjects(body){
-  editingSubjectId = null;
   body.innerHTML = `
     <div class="field-row">
       <div class="field"><label>اسم المادة</label><input id="newSubjName" placeholder="مثال: الرياضيات"></div>
@@ -1498,7 +1925,7 @@ function renderAdminSubjects(body){
     <button class="btn-primary" id="subjSubmitBtn" onclick="addSubject()">+ إضافة مادة</button>
     <button class="btn-secondary hidden" id="subjCancelBtn" onclick="cancelEditSubject()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
-      ${SUBJECTS.map((s,i)=>`
+      ${SUBJECTS.filter(s=>adminMatches(s.name)).map((s)=>{ const i = SUBJECTS.findIndex(x=>x.id===s.id); return `
         <div class="manage-row ${s.active===false?'inactive':''}">
           <div class="mr-reorder">
             <button ${i===0?'disabled':''} onclick="reorderItem('subjects', SUBJECTS, '${s.id}', -1)">${ic('chevronUp',12)}</button>
@@ -1510,8 +1937,8 @@ function renderAdminSubjects(body){
             <button onclick="editSubject('${s.id}')">${ic('edit',15)}</button>
             <button class="del" onclick="deleteDoc('subjects','${s.id}','المادة')">${ic('trash',15)}</button>
           </div>
-        </div>
-      `).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد مواد بعد</div>'}
+        </div>`;
+      }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد مواد بعد</div>'}
     </div>`;
 }
 function addSubject(){
@@ -1543,7 +1970,6 @@ function cancelEditSubject(){ editingSubjectId=null; renderAdminBody(); }
 /* ---- ADMIN: TEACHERS ---- */
 let editingTeacherId = null;
 function renderAdminTeachers(body){
-  editingTeacherId = null;
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newTeachSubj">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
@@ -1553,7 +1979,7 @@ function renderAdminTeachers(body){
     <button class="btn-primary" id="teachSubmitBtn" onclick="addTeacher()">+ إضافة مدرّس</button>
     <button class="btn-secondary hidden" id="teachCancelBtn" onclick="cancelEditTeacher()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
-      ${TEACHERS.map(t=>{
+      ${TEACHERS.filter(t=>adminMatches(t.name)).map(t=>{
         const sibs = TEACHERS.filter(x=>x.subjectId===t.subjectId);
         const i = sibs.findIndex(x=>x.id===t.id);
         return `
@@ -1606,7 +2032,6 @@ function cancelEditTeacher(){ editingTeacherId=null; renderAdminBody(); }
 
 /* ---- ADMIN: CHAPTERS ---- */
 function renderAdminChapters(body){
-  editingChapterId = null;
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newChapSubj" onchange="filterChapterTeacherSelect()">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
@@ -1622,7 +2047,7 @@ function renderAdminChapters(body){
     <button class="btn-primary" id="chapSubmitBtn" onclick="addChapter()">+ إضافة فصل</button>
     <button class="btn-secondary hidden" id="chapCancelBtn" onclick="cancelEditChapter()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
-      ${CHAPTERS.map(c=>{
+      ${CHAPTERS.filter(c=>adminMatches(c.title)).map(c=>{
         const sibs = CHAPTERS.filter(x=>x.teacherId===c.teacherId);
         const i = sibs.findIndex(x=>x.id===c.id);
         return `
@@ -1690,7 +2115,6 @@ function cancelEditChapter(){ editingChapterId=null; renderAdminBody(); }
 let draftServers = [{label:'سيرفر 1', url:''}];
 let editingLectureId = null;
 function renderAdminLectures(body){
-  editingLectureId = null;
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newLecSubj" onchange="filterLectureChapterSelect()">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
@@ -1705,8 +2129,20 @@ function renderAdminLectures(body){
     </div>
     <button class="btn-primary" id="lecSubmitBtn" onclick="addLecture()">+ إضافة محاضرة</button>
     <button class="btn-secondary hidden" id="lecCancelBtn" onclick="cancelEditLecture()">إلغاء التعديل</button>
+    <button class="btn-secondary" onclick="toggleBulkUpload()">${ic('upload',14)} رفع دفعة محاضرات دفعة وحدة</button>
+    <div id="bulkUploadBox" class="hidden" style="margin-top:14px;padding:14px;background:var(--bg-elev);border:1px solid var(--card-border);border-radius:12px;">
+      <div style="font-size:11px;color:var(--text-faint);margin-bottom:10px;line-height:1.8;">
+        اكتب سطر لكل محاضرة بهذا الشكل بالضبط (يفصل بينهم علامة |):<br>
+        <b style="color:var(--gold);">عنوان المحاضرة | رابط الفيديو</b><br>
+        كل المحاضرات بتنضاف لنفس المادة والفصل المختارين فوق.
+      </div>
+      <textarea id="bulkText" placeholder="محاضرة 1 - مقدمة | https://rumble.com/xxxx
+محاضرة 2 - تابع | https://youtube.com/watch?v=xxxx
+محاضرة 3 | https://drive.google.com/file/d/xxxx/view" style="min-height:130px;"></textarea>
+      <button class="btn-primary" onclick="submitBulkUpload()">رفع كل المحاضرات</button>
+    </div>
     <div style="margin-top:18px;">
-      ${LECTURES.map(l=>{
+      ${LECTURES.filter(l=>adminMatches(l.title)).map(l=>{
         const sibs = LECTURES.filter(x=>x.chapterId===l.chapterId);
         const i = sibs.findIndex(x=>x.id===l.id);
         return `
@@ -1787,6 +2223,45 @@ function editLecture(id){
 function cancelEditLecture(){
   editingLectureId = null;
   renderAdminBody();
+}
+function toggleBulkUpload(){
+  const box = $('bulkUploadBox');
+  box.classList.toggle('hidden');
+}
+function submitBulkUpload(){
+  const subjectId = $('newLecSubj').value, chapterId = $('newLecChap').value;
+  if(!chapterId) return toast('اختر فصلًا أولًا');
+  const raw = $('bulkText').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return toast('الصق سطر واحد على الأقل');
+  const parsed = [];
+  const bad = [];
+  lines.forEach(line=>{
+    const parts = line.split('|');
+    if(parts.length < 2){ bad.push(line); return; }
+    const title = parts[0].trim();
+    const url = parts.slice(1).join('|').trim();
+    if(!title || !url){ bad.push(line); return; }
+    parsed.push({title, url});
+  });
+  if(!parsed.length) return toast('ما لقيت أي سطر صحيح — تأكد من الفاصل |');
+  const batch = db.batch();
+  parsed.forEach((p, idx)=>{
+    const ref = db.collection('lectures').doc();
+    batch.set(ref, {
+      chapterId, title: p.title,
+      servers: [{label:'سيرفر 1', url:p.url}],
+      order: Date.now() + idx
+    });
+  });
+  batch.commit()
+    .then(()=>{
+      toast(`تم رفع ${parsed.length} محاضرة${bad.length ? ` (تجاهلت ${bad.length} سطر غير صحيح)` : ''}`);
+      $('bulkText').value = '';
+      $('bulkUploadBox').classList.add('hidden');
+      renderAdminBody();
+    })
+    .catch(e=>toast('خطأ: '+e.message));
 }
 function duplicateLecture(id){
   const l = LECTURES.find(x=>x.id===id);
@@ -1935,6 +2410,30 @@ function saveLastWatched(lecture){
     title: lecture.title, ts: Date.now()
   }));
 }
+/* ---------------------------------------------------------------------- */
+/* ANNOUNCEMENT BANNER (رسالة ترحيب/إعلان يضبطها الأدمن)                  */
+/* ---------------------------------------------------------------------- */
+const ANNOUNCE_DISMISS_KEY = 'zeus_announce_dismissed';
+function renderAnnouncementBanner(){
+  const slot = $('announcementSlot');
+  if(!slot) return;
+  if(!ANNOUNCEMENT || !ANNOUNCEMENT.active || !(ANNOUNCEMENT.text||'').trim()){
+    slot.innerHTML = ''; return;
+  }
+  const hash = (ANNOUNCEMENT.text||'').length + ':' + (ANNOUNCEMENT.updatedAt ? String(ANNOUNCEMENT.updatedAt.seconds||'') : '');
+  if(localStorage.getItem(ANNOUNCE_DISMISS_KEY) === hash){ slot.innerHTML=''; return; }
+  slot.innerHTML = `
+    <div class="announce-banner">
+      <div class="an-icon">${ic('megaphone',17)}</div>
+      <div class="an-text">${esc(ANNOUNCEMENT.text)}</div>
+      <button class="an-close" onclick="dismissAnnouncement('${esc(hash)}')">${ic('close',14)}</button>
+    </div>`;
+}
+function dismissAnnouncement(hash){
+  localStorage.setItem(ANNOUNCE_DISMISS_KEY, hash);
+  $('announcementSlot').innerHTML = '';
+}
+
 function renderContinueWatch(){
   const slot = $('continueWatchSlot');
   if(!slot) return;
@@ -1964,6 +2463,13 @@ function resumeLastWatched(){
 /* BOOT                                                                      */
 /* ---------------------------------------------------------------------- */
 startListeners();
+
+// يحدّث حالة "نشط الآن" بلوحة المستخدمين بشكل دوري حتى بدون بيانات جديدة تجي من Firestore
+setInterval(()=>{
+  if(isAdmin && adminTab==='users' && document.getElementById('adminBody')){
+    renderAdminBody();
+  }
+}, 20000);
 </script>
 </body>
 </html>
