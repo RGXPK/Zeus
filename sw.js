@@ -1,10 +1,12 @@
 // ZEUS Academy — Service Worker
-// Caches only the app shell (this HTML page + icons) so the app can open
-// instantly and offline. Everything else (Firebase Auth/Firestore calls,
-// video embeds from YouTube/Drive/Rumble) always goes to the network live —
-// caching those would show stale data or broken video players.
+// v2: الصفحة الرئيسية (index.html) الآن "network-first" — يروح دايمًا يتأكد من
+// آخر نسخة على السيرفر أول شي، ويستخدم النسخة المحفوظة محليًا بس لو ما كان
+// فيه إنترنت. هذا يمنع مشكلة "التطبيق المثبت يضل يعرض نسخة قديمة" بعد كل
+// تحديث. الأيقونات وملف manifest.json تبقى cache-first لأنها نادرًا ما تتغيّر.
+// أي شي ثاني (Firebase Auth/Firestore، تضمين الفيديوهات) يروح للشبكة مباشرة
+// دايمًا ومالوش علاقة بهذا الملف.
 
-const CACHE_NAME = 'zeus-academy-v1';
+const CACHE_NAME = 'zeus-academy-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -31,14 +33,31 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-
-  // Only handle same-origin GET requests for the app shell.
-  // Firebase, video embeds, fonts, etc. (cross-origin or non-GET) pass straight through.
   const url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) {
+    return; // Firebase وكل شي خارجي يمر عادي بدون تدخل
+  }
+
+  const isPage = req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
+
+  if (isPage) {
+    // Network-first: جرّب الشبكة أول شي عشان توصل آخر نسخة فعليًا،
+    // وارجع للنسخة المحفوظة محليًا فقط لو ما كان فيه إنترنت.
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
     return;
   }
 
+  // باقي الملفات الثابتة (أيقونات، manifest): cache-first مع تحديث بالخلفية.
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
