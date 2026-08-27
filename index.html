@@ -583,18 +583,23 @@ img{max-width:100%; display:block;}
     <div class="gate-brand">
       <div class="gate-brand-mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-2 8 11-14h-7l2-6z"/></svg></div>
       <div class="gate-brand-title">ZEUS <span>⚡</span> ACADEMY</div>
-      <div class="gate-brand-sub">سجّل الدخول للمتابعة إلى المنصة</div>
+      <div class="gate-brand-sub" id="gateSubText">جاري التحقق من الجلسة...</div>
     </div>
-    <div class="admin-tabs" style="justify-content:center;">
-      <button class="admin-tab active" id="gateTabLogin" onclick="switchGateMode('login')">تسجيل الدخول</button>
-      <button class="admin-tab" id="gateTabRegister" onclick="switchGateMode('register')">حساب جديد</button>
+    <div id="gateCheckingState" style="text-align:center;padding:10px 0 6px;">
+      <div class="spinner"></div>
     </div>
-    <div class="field hidden" id="gateNameField"><label>الاسم الكامل</label><input id="gateName" placeholder="مثال: أحمد علي"></div>
-    <div class="field"><label>البريد الإلكتروني</label><input id="gateEmail" type="email" placeholder="you@example.com"></div>
-    <div class="field"><label>كلمة المرور</label><input id="gatePass" type="password" placeholder="••••••••"></div>
-    <button class="btn-primary" id="gateSubmitBtn" onclick="doGateLogin()">دخول</button>
-    <div style="font-size:11px;color:var(--text-faint);margin-top:16px;line-height:1.8;text-align:center;">
-      يلزم إنشاء حساب لمتابعة محاضرات ومحتوى المنصة.
+    <div id="gateFormState" class="hidden">
+      <div class="admin-tabs" style="justify-content:center;">
+        <button class="admin-tab active" id="gateTabLogin" onclick="switchGateMode('login')">تسجيل الدخول</button>
+        <button class="admin-tab" id="gateTabRegister" onclick="switchGateMode('register')">حساب جديد</button>
+      </div>
+      <div class="field hidden" id="gateNameField"><label>الاسم الكامل</label><input id="gateName" placeholder="مثال: أحمد علي"></div>
+      <div class="field"><label>البريد الإلكتروني</label><input id="gateEmail" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label>كلمة المرور</label><input id="gatePass" type="password" placeholder="••••••••"></div>
+      <button class="btn-primary" id="gateSubmitBtn" onclick="doGateLogin()">دخول</button>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:16px;line-height:1.8;text-align:center;">
+        يلزم إنشاء حساب لمتابعة محاضرات ومحتوى المنصة.
+      </div>
     </div>
   </div>
 </div>
@@ -758,6 +763,9 @@ try {
   firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
   db = firebase.firestore();
+  // يضمن أن الجلسة تبقى محفوظة بالجهاز حتى بعد إغلاق المتصفح/التطبيق —
+  // ما يحتاج تسجيل دخول من جديد إلا لو ضغط "تسجيل خروج" صراحة.
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err=>console.warn('persistence setup failed', err));
 } catch (e) {
   document.body.innerHTML = `
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-family:'Cairo',sans-serif;color:#F3F3F1;background:#070707;">
@@ -1282,6 +1290,11 @@ auth.onAuthStateChanged(user=>{
   isAdmin = !!(user && user.uid === ADMIN_UID);
   isAssistant = false; assistantData = null;
   $('authGate').classList.toggle('hidden', !!user);
+  if(!user){
+    $('gateCheckingState').classList.add('hidden');
+    $('gateFormState').classList.remove('hidden');
+    $('gateSubText').textContent = 'سجّل الدخول للمتابعة إلى المنصة';
+  }
   if(user) maybeShowAnnouncementPopup();
   if(isAdmin){
     startStudentsListener(); startAssistantsListener();
