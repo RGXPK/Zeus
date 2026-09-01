@@ -573,37 +573,37 @@ img{max-width:100%; display:block;}
 @media(min-width:520px){
   .grid-subjects{grid-template-columns:repeat(3,1fr);}
 }
+
+/* ---------- landscape / short-height screens ---------- */
+@media(orientation:landscape) and (max-height:520px){
+  :root{ --nav-h:52px; }
+  .topbar{padding:8px 14px;}
+  .brand-mark{width:32px; height:32px;}
+  .brand-mark svg{width:17px; height:17px;}
+  .brand-text .gr{font-size:14px;}
+  .brand-text .ar{display:none;}
+  .view{padding:10px 16px;}
+  .hero, .search-bar{margin-bottom:12px;}
+  /* الفيديو ياخذ أعلى ما يقدر من الارتفاع المتاح بدل نسبة عرض/ارتفاع ثابتة،
+     عشان ما ياكل الشاشة كلها بوضع أفقي على شاشات قصيرة */
+  .player-frame-wrap{
+    height:calc(100vh - 110px); max-height:calc(100vh - 110px);
+    width:auto; padding-top:0; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .player-frame-wrap iframe, .player-frame-wrap video{
+    position:static; width:100%; height:100%;
+  }
+  .player-head{padding:8px 14px;}
+  .modal-sheet{max-height:94vh;}
+}
+@supports (-webkit-touch-callout:none){
+  /* سفاري (آيفون/آيباد) أحيانًا يحسب 100vh غلط بوضع أفقي بسبب أشرطة المتصفح */
+  .player-overlay{height:-webkit-fill-available;}
+}
 </style>
 </head>
 <body>
-
-<!-- ===================== AUTH GATE (يظهر قبل أي شي لحد ما يسجّل دخول) ===================== -->
-<div class="auth-gate" id="authGate">
-  <div class="auth-gate-inner">
-    <div class="gate-brand">
-      <div class="gate-brand-mark"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h6l-2 8 11-14h-7l2-6z"/></svg></div>
-      <div class="gate-brand-title">ZEUS <span>⚡</span> ACADEMY</div>
-      <div class="gate-brand-sub" id="gateSubText">جاري التحقق من الجلسة...</div>
-    </div>
-    <div id="gateCheckingState" style="text-align:center;padding:10px 0 6px;">
-      <div class="spinner"></div>
-    </div>
-    <div id="gateFormState" class="hidden">
-      <div class="admin-tabs" style="justify-content:center;">
-        <button class="admin-tab active" id="gateTabLogin" onclick="switchGateMode('login')">تسجيل الدخول</button>
-        <button class="admin-tab" id="gateTabRegister" onclick="switchGateMode('register')">حساب جديد</button>
-      </div>
-      <div class="field hidden" id="gateNameField"><label>الاسم الكامل</label><input id="gateName" placeholder="مثال: أحمد علي"></div>
-      <div class="field"><label>البريد الإلكتروني</label><input id="gateEmail" type="email" placeholder="you@example.com"></div>
-      <div class="field"><label>كلمة المرور</label><input id="gatePass" type="password" placeholder="••••••••"></div>
-      <button class="btn-primary" id="gateSubmitBtn" onclick="doGateLogin()">دخول</button>
-      <div style="font-size:11px;color:var(--text-faint);margin-top:16px;line-height:1.8;text-align:center;">
-        يلزم إنشاء حساب لمتابعة محاضرات ومحتوى المنصة.
-      </div>
-    </div>
-  </div>
-</div>
-
 
 <!-- ===================== TOP BAR ===================== -->
 <div class="topbar">
@@ -614,7 +614,6 @@ img{max-width:100%; display:block;}
       <div class="ar">السادس الإعدادي — الفرع العملي</div>
     </div>
   </div>
-  <div id="authChipHost"></div>
   <button class="icon-btn" id="themeBtn" title="الوضع"></button>
   <button class="icon-btn" id="adminBtn" title="لوحة التحكم"></button>
 </div>
@@ -784,7 +783,7 @@ try {
 /* ---------------------------------------------------------------------- */
 /* STATE                                                                   */
 /* ---------------------------------------------------------------------- */
-let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [], ASSISTANTS = [];
+let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [], ASSISTANTS = [], VISITORS = [];
 let ANNOUNCEMENT = null;
 let cur = { subjectId:null, teacherId:null, chapterId:null };
 let isAdmin = false;
@@ -929,18 +928,6 @@ function reorderItem(collection, siblings, id, dir){
   batch.commit().then(()=>toast('تم الترتيب')).catch(e=>toast('خطأ: '+e.message));
 }
 
-let studentsUnsub = null;
-function startStudentsListener(){
-  if(studentsUnsub) return;
-  studentsUnsub = db.collection('students').orderBy('lastLoginAt','desc').onSnapshot(snap=>{
-    STUDENTS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
-    if(isAdmin && adminTab==='users') renderAdminBody();
-  }, err=>console.warn(err));
-}
-function stopStudentsListener(){
-  if(studentsUnsub){ studentsUnsub(); studentsUnsub = null; }
-  STUDENTS = [];
-}
 let assistantsUnsub = null;
 function startAssistantsListener(){
   if(assistantsUnsub) return;
@@ -1167,11 +1154,6 @@ function resolveServerEmbed(url){
 /* ---------------------------------------------------------------------- */
 let curLecture = null, curServerIdx = 0;
 function playLecture(id){
-  if(!currentUser){
-    toast('سجّل الدخول أولًا لمشاهدة المحاضرة');
-    openStudentAuth('login');
-    return;
-  }
   curLecture = LECTURES.find(l=>l.id===id);
   if(!curLecture) return;
   saveLastWatched(curLecture);
@@ -1273,94 +1255,146 @@ function doAdminLogin(){
   if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
   auth.signInWithEmailAndPassword(email, pass)
     .then(cred=>{
-      if(cred.user.uid !== ADMIN_UID){
-        auth.signOut();
-        toast('هذا الحساب غير مخوّل كأدمن');
+      if(cred.user.uid === ADMIN_UID){
+        closeModal(); openAdmin();
         return;
       }
-      closeModal(); openAdmin();
+      return db.collection('assistants').doc(cred.user.uid).get().then(snap=>{
+        if(snap.exists){
+          isAssistant = true;
+          assistantData = Object.assign({id:snap.id}, snap.data());
+          closeModal(); openAssistantPanel();
+        } else {
+          auth.signOut();
+          toast('هذا الحساب غير مخوّل بالدخول للوحة التحكم');
+        }
+      });
     })
     .catch(err=> toast('خطأ: '+translateAuthErr(err)));
 }
 
-/* ---- global auth state (covers both admin and students) ---- */
+/* ---- global auth state (covers admin + assistant accounts only) ---- */
 let isAssistant = false, assistantData = null;
 auth.onAuthStateChanged(user=>{
   currentUser = user;
   isAdmin = !!(user && user.uid === ADMIN_UID);
   isAssistant = false; assistantData = null;
-  $('authGate').classList.toggle('hidden', !!user);
-  if(!user){
-    $('gateCheckingState').classList.add('hidden');
-    $('gateFormState').classList.remove('hidden');
-    $('gateSubText').textContent = 'سجّل الدخول للمتابعة إلى المنصة';
-  }
-  if(user) maybeShowAnnouncementPopup();
   if(isAdmin){
-    startStudentsListener(); startAssistantsListener();
+    startAssistantsListener();
+    startVisitorsListener();
+    stopVisitorTracking();
     $('adminFab').classList.toggle('hidden', false);
-    renderAuthChip();
+  } else if(user && user.isAnonymous){
+    stopAssistantsListener(); stopVisitorsListener();
+    $('adminFab').classList.toggle('hidden', true);
+    startVisitorTracking(user);
+  } else if(user){
+    stopAssistantsListener(); stopVisitorsListener(); stopVisitorTracking();
+    db.collection('assistants').doc(user.uid).get().then(snap=>{
+      isAssistant = snap.exists;
+      assistantData = snap.exists ? Object.assign({id:snap.id}, snap.data()) : null;
+      $('adminFab').classList.toggle('hidden', !isAssistant);
+    }).catch(()=>{ $('adminFab').classList.toggle('hidden', true); });
   } else {
-    stopStudentsListener(); stopAssistantsListener();
-    if(user){
-      db.collection('assistants').doc(user.uid).get().then(snap=>{
-        isAssistant = snap.exists;
-        assistantData = snap.exists ? Object.assign({id:snap.id}, snap.data()) : null;
-        $('adminFab').classList.toggle('hidden', !isAssistant);
-        renderAuthChip();
-        if(!isAssistant){ ensureStudentDocExists(user); startHeartbeat(); }
-        else stopHeartbeat();
-      }).catch(()=>{ $('adminFab').classList.toggle('hidden', true); renderAuthChip(); });
-    } else {
-      $('adminFab').classList.toggle('hidden', true);
-      renderAuthChip();
-      stopHeartbeat();
-    }
+    $('adminFab').classList.toggle('hidden', true);
+    auth.signInAnonymously().catch(err=>console.warn('anonymous sign-in failed', err));
   }
 });
-/* ---------------------------------------------------------------------- */
-/* PRESENCE / HEARTBEAT — "آخر نشاط" و"نشط الآن" لكل طالب                  */
-/* ---------------------------------------------------------------------- */
-const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // آخر نبضة خلال دقيقتين = "نشط الآن"
-let heartbeatTimer = null;
-function startHeartbeat(){
-  if(heartbeatTimer) return;
-  sendHeartbeat();
-  heartbeatTimer = setInterval(sendHeartbeat, 60000);
-  document.addEventListener('visibilitychange', onHeartbeatVisibility);
-}
-function onHeartbeatVisibility(){
-  if(document.visibilityState === 'visible') sendHeartbeat();
-}
-function sendHeartbeat(){
-  if(!currentUser || currentUser.uid === ADMIN_UID || isAssistant) return;
-  db.collection('students').doc(currentUser.uid).set({
-    lastActiveAt: firebase.firestore.FieldValue.serverTimestamp()
-  }, {merge:true}).catch(()=>{});
-}
-function stopHeartbeat(){
-  if(heartbeatTimer){ clearInterval(heartbeatTimer); heartbeatTimer=null; }
-  document.removeEventListener('visibilitychange', onHeartbeatVisibility);
-}
-/* يصلح حسابات سجّلت أو دخلت قبل ما تنحل مشكلة الصلاحيات — يتأكد كل مرة
-   يفتح فيها الموقع (مو بس عند تسجيل دخول جديد) أن سجل الطالب موجود فعليًا. */
-function ensureStudentDocExists(user){
-  if(user.uid === ADMIN_UID) return;
-  db.collection('students').doc(user.uid).get().then(snap=>{
-    if(snap.exists) return;
-    db.collection('students').doc(user.uid).set({
-      name: user.displayName || '',
-      email: user.email || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-      loginCount: 1
-    }).catch(err=>console.warn('student self-heal failed', err));
-  }).catch(err=>console.warn('student self-heal check failed', err));
-}
 function openAdminOrAssistant(){
   if(isAdmin) return openAdmin();
   if(isAssistant) return openAssistantPanel();
 }
+/* ---------------------------------------------------------------------- */
+/* VISITOR TRACKING — IP + نوع الجهاز + عدد الحاضرين الآن (بدون تسجيل دخول) */
+/* يعتمد على "Anonymous Authentication" بالخلفية (بدون أي واجهة أو نموذج    */
+/* يشوفها الزائر) فقط عشان قواعد الأمان تسمح بكتابة آمنة بدون فتح الباب      */
+/* للجميع بدون قيود.                                                        */
+/* ---------------------------------------------------------------------- */
+const VISITOR_ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
+let visitorTrackingStarted = false, visitorHeartbeatTimer = null, cachedVisitorIP = null;
+function detectDevice(){
+  const ua = navigator.userAgent || '';
+  if(/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if(/iPhone/.test(ua)) return 'iPhone';
+  if(/Android/.test(ua)){
+    const m = ua.match(/Android[^;]*;\s*([^)]+)\)/);
+    return m ? ('Android — ' + m[1].split('Build')[0].trim()) : 'Android';
+  }
+  if(/Windows/.test(ua)) return 'Windows';
+  if(/Macintosh/.test(ua)) return 'Mac';
+  if(/Linux/.test(ua)) return 'Linux';
+  return 'غير معروف';
+}
+function detectBrowser(){
+  const ua = navigator.userAgent || '';
+  if(/FxiOS/.test(ua)) return 'Firefox (iOS)';
+  if(/EdgiOS|Edg\//.test(ua)) return 'Edge';
+  if(/OPR\//.test(ua)) return 'Opera';
+  if(/SamsungBrowser/.test(ua)) return 'Samsung Internet';
+  if(/CriOS|Chrome\//.test(ua)) return 'Chrome';
+  if(/Safari\//.test(ua)) return 'Safari';
+  if(/Firefox\//.test(ua)) return 'Firefox';
+  return 'غير معروف';
+}
+function fetchVisitorIP(){
+  if(cachedVisitorIP) return Promise.resolve(cachedVisitorIP);
+  return fetch('https://api.ipify.org?format=json')
+    .then(r=>r.json()).then(d=>{ cachedVisitorIP = d.ip; return cachedVisitorIP; })
+    .catch(()=>null);
+}
+function startVisitorTracking(user){
+  if(visitorTrackingStarted) return;
+  visitorTrackingStarted = true;
+  sendVisitorHeartbeat(user);
+  visitorHeartbeatTimer = setInterval(()=>sendVisitorHeartbeat(user), 60000);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible') sendVisitorHeartbeat(user);
+  });
+}
+function stopVisitorTracking(){
+  visitorTrackingStarted = false;
+  if(visitorHeartbeatTimer){ clearInterval(visitorHeartbeatTimer); visitorHeartbeatTimer=null; }
+}
+function sendVisitorHeartbeat(user){
+  const ref = db.collection('visitors').doc(user.uid);
+  fetchVisitorIP().then(ip=>{
+    ref.get().then(snap=>{
+      const data = {
+        ip: ip || 'غير معروف',
+        device: detectDevice(),
+        browser: detectBrowser(),
+        lastSeenAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if(!snap.exists) data.firstSeenAt = firebase.firestore.FieldValue.serverTimestamp();
+      ref.set(data, {merge:true}).catch(()=>{});
+    }).catch(()=>{});
+  });
+}
+let visitorsUnsub = null;
+function startVisitorsListener(){
+  if(visitorsUnsub) return;
+  visitorsUnsub = db.collection('visitors').orderBy('lastSeenAt','desc').onSnapshot(snap=>{
+    VISITORS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    if(isAdmin && adminTab==='visitors') renderAdminBody();
+  }, err=>console.warn(err));
+}
+function stopVisitorsListener(){
+  if(visitorsUnsub){ visitorsUnsub(); visitorsUnsub=null; }
+  VISITORS = [];
+}
+function isVisitorOnline(ts){
+  if(!ts) return false;
+  try{ const d = ts.toDate ? ts.toDate() : new Date(ts); return (Date.now()-d.getTime()) < VISITOR_ONLINE_THRESHOLD_MS; }
+  catch(e){ return false; }
+}
+function fmtDateTime(ts){
+  if(!ts) return 'غير معروف';
+  try{
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'}) + ' — ' + d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ return ''; }
+}
+
 function translateAuthErr(err){
   const c = err.code || '';
   if(c.includes('user-not-found')) return 'الحساب غير موجود';
@@ -1387,8 +1421,8 @@ function renderAdmin(){
         <button class="admin-tab ${adminTab==='teachers'?'active':''}" onclick="setAdminTab('teachers')">المدرسين</button>
         <button class="admin-tab ${adminTab==='chapters'?'active':''}" onclick="setAdminTab('chapters')">الفصول</button>
         <button class="admin-tab ${adminTab==='lectures'?'active':''}" onclick="setAdminTab('lectures')">المحاضرات</button>
-        <button class="admin-tab ${adminTab==='users'?'active':''}" onclick="setAdminTab('users')">${ic('users',13)} المستخدمين</button>
         <button class="admin-tab ${adminTab==='assistants'?'active':''}" onclick="setAdminTab('assistants')">${ic('users',13)} المساعدين</button>
+        <button class="admin-tab ${adminTab==='visitors'?'active':''}" onclick="setAdminTab('visitors')">${ic('users',13)} الزوّار</button>
         <button class="admin-tab ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">${ic('settings',13)} الإعدادات</button>
       </div>
       <div class="search-bar" style="margin-bottom:14px;">
@@ -1612,148 +1646,6 @@ function editLectureAssistant(id){
 function cancelEditLectureAssistant(){ editingLectureAsstId=null; renderAssistantBody(); }
 
 
-/* =========================================================================
-   STUDENT AUTH — تسجيل دخول/حساب جديد للطلاب (مطلوب لفتح تشغيل المحاضرات)
-   ========================================================================= */
-let studentAuthMode = 'login';
-function openStudentAuth(mode){
-  studentAuthMode = mode || 'login';
-  renderStudentAuthModal();
-}
-function switchStudentAuthMode(m){ studentAuthMode = m; renderStudentAuthModal(); }
-function renderStudentAuthModal(){
-  const isLogin = studentAuthMode === 'login';
-  $('modalHost').innerHTML = `
-  <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="sheet-handle"></div>
-      <div class="sheet-title">${isLogin?'تسجيل الدخول':'إنشاء حساب جديد'} <button class="icon-btn" onclick="closeModal()">${ic('close',15)}</button></div>
-      <div class="admin-tabs">
-        <button class="admin-tab ${isLogin?'active':''}" onclick="switchStudentAuthMode('login')">تسجيل الدخول</button>
-        <button class="admin-tab ${!isLogin?'active':''}" onclick="switchStudentAuthMode('register')">حساب جديد</button>
-      </div>
-      ${!isLogin ? `<div class="field"><label>الاسم الكامل</label><input id="stuName" placeholder="مثال: أحمد علي"></div>` : ''}
-      <div class="field"><label>البريد الإلكتروني</label><input id="stuEmail" type="email" placeholder="you@example.com"></div>
-      <div class="field"><label>كلمة المرور</label><input id="stuPass" type="password" placeholder="••••••••"></div>
-      <button class="btn-primary" onclick="${isLogin?'doStudentLogin()':'doStudentRegister()'}">${isLogin?'دخول':'إنشاء الحساب'}</button>
-      <div style="font-size:11px;color:var(--text-faint);margin-top:14px;line-height:1.7;">
-        تصفّح المواد والفصول متاح للجميع — تسجيل الدخول مطلوب فقط عند مشاهدة المحاضرة.
-      </div>
-    </div>
-  </div>`;
-}
-function doStudentRegister(){
-  const name = $('stuName').value.trim(), email = $('stuEmail').value.trim(), pass = $('stuPass').value;
-  if(!name) return toast('اكتب اسمك الكامل');
-  if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
-  if(pass.length<6) return toast('كلمة المرور 6 أحرف على الأقل');
-  auth.createUserWithEmailAndPassword(email, pass)
-    .then(cred => cred.user.updateProfile({displayName:name}).then(()=>
-      db.collection('students').doc(cred.user.uid).set({
-        name, email,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-        loginCount: 1
-      })
-    ))
-    .then(()=>{ toast('تم إنشاء الحساب بنجاح'); closeModal(); })
-    .catch(err=> toast('خطأ: '+translateAuthErr(err)));
-}
-function doStudentLogin(){
-  const email = $('stuEmail').value.trim(), pass = $('stuPass').value;
-  if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(cred => upsertStudentOnLogin(cred.user))
-    .then(()=>{ toast('تم تسجيل الدخول'); closeModal(); })
-    .catch(err=> toast('خطأ: '+translateAuthErr(err)));
-}
-function doStudentLogout(){ auth.signOut(); closeModal(); toast('تم تسجيل الخروج'); }
-
-/* يضمن وجود سجل الطالب بـ Firestore حتى لو انرفضت الكتابة أول مرة (مثلًا قبل تحديث Rules) —
-   كل دخول ناجح "يُصلح" السجل تلقائيًا بدل ما يفشل بصمت. */
-function upsertStudentOnLogin(user){
-  if(user.uid === ADMIN_UID) return Promise.resolve();
-  return db.collection('assistants').doc(user.uid).get().then(snap=>{
-    if(snap.exists) return; // حسابات المساعدين ما تنحسب كطلاب
-    return db.collection('students').doc(user.uid).set({
-      name: user.displayName || '',
-      email: user.email || '',
-      lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-      loginCount: firebase.firestore.FieldValue.increment(1)
-    }, {merge:true});
-  }).catch(err=>console.warn('student upsert failed', err));
-}
-
-/* =========================================================================
-   AUTH GATE — نفس منطق تسجيل الطالب، بس بشاشة كاملة تظهر قبل أي محتوى
-   ========================================================================= */
-let gateMode = 'login';
-function switchGateMode(m){
-  gateMode = m;
-  $('gateTabLogin').classList.toggle('active', m==='login');
-  $('gateTabRegister').classList.toggle('active', m==='register');
-  $('gateNameField').classList.toggle('hidden', m==='login');
-  $('gateSubmitBtn').textContent = m==='login' ? 'دخول' : 'إنشاء الحساب';
-  $('gateSubmitBtn').setAttribute('onclick', m==='login' ? 'doGateLogin()' : 'doGateRegister()');
-}
-function doGateRegister(){
-  const name = $('gateName').value.trim(), email = $('gateEmail').value.trim(), pass = $('gatePass').value;
-  if(!name) return toast('اكتب اسمك الكامل');
-  if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
-  if(pass.length<6) return toast('كلمة المرور 6 أحرف على الأقل');
-  auth.createUserWithEmailAndPassword(email, pass)
-    .then(cred => cred.user.updateProfile({displayName:name}).then(()=>
-      db.collection('students').doc(cred.user.uid).set({
-        name, email,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
-        loginCount: 1
-      })
-    ))
-    .then(()=> toast('مرحبًا بك 👋'))
-    .catch(err=> toast('خطأ: '+translateAuthErr(err)));
-}
-function doGateLogin(){
-  const email = $('gateEmail').value.trim(), pass = $('gatePass').value;
-  if(!email||!pass) return toast('عبّي البريد وكلمة المرور');
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(cred => upsertStudentOnLogin(cred.user))
-    .then(()=> toast('تم تسجيل الدخول'))
-    .catch(err=> toast('خطأ: '+translateAuthErr(err)));
-}
-
-function renderAuthChip(){
-  const host = $('authChipHost');
-  if(!host) return;
-  if(currentUser && !isAdmin){
-    const name = currentUser.displayName || 'طالب';
-    host.innerHTML = `<button class="auth-chip" onclick="openProfileSheet()">
-      <span class="ac-avatar">${esc(name[0]||'ط')}</span>
-      <span class="ac-name">${esc(name)}</span>
-    </button>`;
-  } else if(!currentUser){
-    host.innerHTML = `<button class="auth-chip login-chip" onclick="openStudentAuth('login')">${ic('users',15)}<span>دخول</span></button>`;
-  } else {
-    host.innerHTML = '';
-  }
-}
-function openProfileSheet(){
-  $('modalHost').innerHTML = `
-  <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="sheet-handle"></div>
-      <div class="sheet-title">حسابي <button class="icon-btn" onclick="closeModal()">${ic('close',15)}</button></div>
-      <div style="text-align:center;padding:6px 0 22px;">
-        <div class="auth-chip" style="display:inline-flex;padding:14px;border-radius:50%;">
-          <span class="ac-avatar" style="width:38px;height:38px;font-size:16px;">${esc((currentUser.displayName||'ط')[0])}</span>
-        </div>
-        <div style="font-weight:800;font-size:16px;margin-top:14px;">${esc(currentUser.displayName||'')}</div>
-        <div style="font-size:12.5px;color:var(--text-dim);margin-top:2px;">${esc(currentUser.email||'')}</div>
-      </div>
-      <button class="btn-secondary" onclick="doStudentLogout()">تسجيل خروج</button>
-    </div>
-  </div>`;
-}
 
 function renderAdminBody(){
   const body = $('adminBody');
@@ -1761,92 +1653,43 @@ function renderAdminBody(){
   if(adminTab==='teachers') return renderAdminTeachers(body);
   if(adminTab==='chapters') return renderAdminChapters(body);
   if(adminTab==='lectures') return renderAdminLectures(body);
-  if(adminTab==='users') return renderAdminUsers(body);
   if(adminTab==='assistants') return renderAdminAssistants(body);
+  if(adminTab==='visitors') return renderAdminVisitors(body);
   if(adminTab==='settings') return renderAdminSettings(body);
 }
 
-/* ---- ADMIN: USERS (من سجّل حساب / سجّل دخول) ---- */
-function renderAdminUsers(body){
-  const onlineCount = STUDENTS.filter(s=>isOnlineNow(s.lastActiveAt)).length;
+/* ---- ADMIN: VISITORS (زوّار الموقع بدون تسجيل دخول) ---- */
+function renderAdminVisitors(body){
+  const onlineCount = VISITORS.filter(v=>isVisitorOnline(v.lastSeenAt)).length;
   body.innerHTML = `
     <div style="display:flex; gap:10px; margin-bottom:18px;">
       <div style="flex:1;text-align:center;padding:20px 10px;background:var(--bg-elev);border:1px solid var(--card-border);border-radius:14px;">
-        <div style="font-size:32px;font-weight:900;color:var(--teal);">${STUDENTS.length}</div>
-        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">مستخدم مسجّل</div>
+        <div style="font-size:32px;font-weight:900;color:var(--teal);">${VISITORS.length}</div>
+        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">إجمالي الزوّار</div>
       </div>
       <div style="flex:1;text-align:center;padding:20px 10px;background:var(--bg-elev);border:1px solid rgba(45,212,200,.3);border-radius:14px;">
         <div style="font-size:32px;font-weight:900;color:var(--teal);">${onlineCount}</div>
-        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">🟢 نشط الآن</div>
+        <div style="font-size:12px;color:var(--text-faint);font-weight:700;margin-top:4px;">🟢 متصل الآن</div>
       </div>
     </div>
-    <div class="section-label" style="margin-bottom:10px;"><span class="dot"></span>الدخول خلال آخر 7 أيام</div>
-    ${signupChartHTML()}
-    ${STUDENTS.filter(s=>adminMatches(s.name)||adminMatches(s.email)).map(s=>{
-      const online = isOnlineNow(s.lastActiveAt);
+    ${VISITORS.filter(v=>adminMatches(v.ip)||adminMatches(v.device)||adminMatches(v.browser)).map(v=>{
+      const online = isVisitorOnline(v.lastSeenAt);
       return `
       <div class="manage-row">
-        <div class="teacher-avatar" style="width:38px;height:38px;font-size:14px;flex-shrink:0;position:relative;">
-          ${esc((s.name||'?')[0])}
+        <div class="teacher-avatar" style="width:38px;height:38px;font-size:12px;flex-shrink:0;position:relative;">
+          ${ic('users',16)}
           ${online?'<span style="position:absolute;bottom:-1px;left:-1px;width:11px;height:11px;border-radius:50%;background:#2ecc71;border:2px solid var(--bg-elev);"></span>':''}
         </div>
         <div style="flex:1;min-width:0;">
-          <div class="mr-title">${esc(s.name||'—')}</div>
-          <div class="mr-sub">${esc(s.email||'')} • دخل ${s.loginCount||1} مرة</div>
+          <div class="mr-title">${esc(v.ip||'IP غير معروف')}</div>
+          <div class="mr-sub">${esc(v.device||'')} • ${esc(v.browser||'')}</div>
           <div class="mr-sub" style="margin-top:2px;">
-            ${online ? '<span style="color:#2ecc71;font-weight:800;">🟢 نشط الآن</span>' : `آخر نشاط: ${fmtDateTime(s.lastActiveAt || s.lastLoginAt)}`}
+            ${online ? '<span style="color:#2ecc71;font-weight:800;">🟢 متصل الآن</span>' : `آخر ظهور: ${fmtDateTime(v.lastSeenAt)}`}
           </div>
         </div>
       </div>`;
-    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;text-align:center;padding:20px 0;">لا يوجد مستخدمين مسجّلين بعد</div>'}
+    }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;text-align:center;padding:20px 0;">لا يوجد زوّار مسجّلين بعد</div>'}
   `;
-}
-function isOnlineNow(ts){
-  if(!ts) return false;
-  try{
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    return (Date.now() - d.getTime()) < ONLINE_THRESHOLD_MS;
-  }catch(e){ return false; }
-}
-function fmtDateTime(ts){
-  if(!ts) return 'غير معروف';
-  try{
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    const datePart = d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'});
-    const timePart = d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});
-    return `${datePart} — ${timePart}`;
-  }catch(e){ return ''; }
-}
-function signupChartHTML(){
-  const days = [], counts = {};
-  for(let i=6;i>=0;i--){
-    const d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
-    const key = d.toISOString().slice(0,10);
-    days.push({key, date:d}); counts[key]=0;
-  }
-  STUDENTS.forEach(s=>{
-    const ts = s.lastLoginAt || s.createdAt;
-    if(!ts) return;
-    let d;
-    try{ d = ts.toDate ? ts.toDate() : new Date(ts); }catch(e){ return; }
-    d.setHours(0,0,0,0);
-    const key = d.toISOString().slice(0,10);
-    if(counts[key]!==undefined) counts[key]++;
-  });
-  const max = Object.values(counts).reduce(function(a,b){ return Math.max(a,b); }, 1);
-  return `<div class="signup-chart">${days.map(({key,date})=>{
-    const v = counts[key];
-    const h = Math.max(Math.round((v/max)*100), v>0?8:2);
-    const label = date.toLocaleDateString('ar-EG',{weekday:'short'});
-    return `<div class="sc-col">
-      <div class="sc-val">${v}</div>
-      <div class="sc-bar-wrap"><div class="sc-bar" style="height:${h}%"></div></div>
-      <div class="sc-label">${label}</div>
-    </div>`;
-  }).join('')}</div>`;
-}
-function fmtDate(ts){
-  try{ const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'}); }catch(e){ return ''; }
 }
 
 /* ---- ADMIN: ASSISTANTS (دعوة مدرّس مساعد بصلاحيات محدودة لمادته) ---- */
@@ -2337,7 +2180,6 @@ function mountStaticIcons(){
   document.querySelectorAll('.nav-btn .ni[data-icon]').forEach(el=>{
     el.innerHTML = ic(el.dataset.icon, 20);
   });
-  renderAuthChip();
 }
 mountStaticIcons();
 
@@ -2433,8 +2275,6 @@ function announcementHash(){
 }
 function maybeShowAnnouncementPopup(){
   if(!ANNOUNCEMENT || !ANNOUNCEMENT.active || !(ANNOUNCEMENT.text||'').trim()) return;
-  if(!currentUser) return; // ننتظر لين يتعدى بوابة الدخول
-  if(!$('authGate').classList.contains('hidden')) return;
   const hash = announcementHash();
   if(localStorage.getItem(ANNOUNCE_DISMISS_KEY) === hash) return;
   if(announcementLastShownHash === hash && $('modalHost').innerHTML.includes('announce-popup')) return;
@@ -2486,9 +2326,9 @@ function resumeLastWatched(){
 /* ---------------------------------------------------------------------- */
 startListeners();
 
-// يحدّث حالة "نشط الآن" بلوحة المستخدمين بشكل دوري حتى بدون بيانات جديدة تجي من Firestore
+// يحدّث حالة "متصل الآن" بلوحة الزوّار بشكل دوري حتى بدون بيانات جديدة تجي من Firestore
 setInterval(()=>{
-  if(isAdmin && adminTab==='users' && document.getElementById('adminBody')){
+  if(isAdmin && adminTab==='visitors' && document.getElementById('adminBody')){
     renderAdminBody();
   }
 }, 20000);
