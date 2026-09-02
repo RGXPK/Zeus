@@ -487,6 +487,23 @@ img{max-width:100%; display:block;}
 .mr-reorder button:disabled{opacity:.25;}
 .mr-reorder .icn{width:12px; height:12px;}
 .mr-actions{display:flex; gap:10px; flex-shrink:0;}
+.mr-icon-slot{
+  width:32px; height:32px; border-radius:9px; flex-shrink:0;
+  background:var(--gold-glow); border:1px solid var(--gold-line); color:var(--gold);
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---------- subject icon picker (admin) ---------- */
+.icon-picker{display:flex; flex-wrap:wrap; gap:8px;}
+.icon-picker-btn{
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+  width:70px; padding:10px 6px; border-radius:12px;
+  background:var(--bg-elev); border:1px solid var(--card-border); color:var(--text-dim);
+}
+.icon-picker-btn span{font-size:10.5px; font-weight:700;}
+.icon-picker-btn.selected{
+  background:var(--gold-glow); border-color:var(--gold); color:var(--gold);
+}
 .mr-actions button{font-size:14px; color:var(--text-dim);}
 .mr-actions .del{color:var(--danger);}
 .mr-actions .toggle-on{color:var(--gold);}
@@ -816,6 +833,14 @@ const ICONS = {
   megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>',
   upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
   userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>',
+  /* أيقونات المواد الدراسية */
+  subj_math: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8.01" y2="10"/><line x1="12" y1="10" x2="12.01" y2="10"/><line x1="16" y1="10" x2="16.01" y2="10"/><line x1="8" y1="14" x2="8.01" y2="14"/><line x1="12" y1="14" x2="12.01" y2="14"/><line x1="16" y1="14" x2="16.01" y2="14"/><line x1="8" y1="18" x2="8.01" y2="18"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>',
+  subj_physics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(120 12 12)"/></svg>',
+  subj_chemistry: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6.3L3.8 18a2 2 0 0 0 1.8 3h12.8a2 2 0 0 0 1.8-3L15 8.3V2"/><line x1="8" y1="2" x2="16" y2="2"/><line x1="6.5" y1="14" x2="17.5" y2="14"/></svg>',
+  subj_biology: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 4 12 4 12 8s-12 4-12 8"/><path d="M18 3c0-0 0 0 0 0"/><line x1="7" y1="6" x2="17" y2="6"/><line x1="7" y1="18" x2="17" y2="18"/><line x1="9.5" y1="11" x2="14.5" y2="11"/></svg>',
+  subj_islamic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3.5a8.5 8.5 0 1 0 3.4 15.9A9.5 9.5 0 1 1 17 3.5z"/><path d="M4.5 3.6l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4L2.6 5.5l1.4-.5.5-1.4z" fill="currentColor" stroke="none"/></svg>',
+  subj_arabic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22l4-1 13-13-3-3L3 18l-1 4z"/><path d="M15 3.5l4.5 4.5"/></svg>',
+  subj_english: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.7 15.7 0 0 1 4 10 15.7 15.7 0 0 1-4 10 15.7 15.7 0 0 1-4-10 15.7 15.7 0 0 1 4-10z"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   bookOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
@@ -823,6 +848,22 @@ const ICONS = {
   history: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-8.46L3 8"/><polyline points="12 7 12 12 16 14"/></svg>'
 };
 function ic(name, size){ size = size||18; return `<span class="icn" style="width:${size}px;height:${size}px;">${ICONS[name]||''}</span>`; }
+const SUBJECT_ICON_PRESETS = [
+  {key:'subj_math', label:'رياضيات'},
+  {key:'subj_physics', label:'فيزياء'},
+  {key:'subj_chemistry', label:'كيمياء'},
+  {key:'subj_biology', label:'أحياء'},
+  {key:'subj_islamic', label:'إسلامية'},
+  {key:'subj_arabic', label:'عربي'},
+  {key:'subj_english', label:'انكليزي'}
+];
+/* يعرض أيقونة SVG جاهزة لو كانت قيمة icon تطابق أحد أيقونات المواد، وإلا
+   يعرضها كنص/إيموجي عادي (توافق مع مواد قديمة كانت تستخدم إيموجي يدوي) */
+function renderSubjectIcon(iconVal, size){
+  if(iconVal && ICONS[iconVal]) return ic(iconVal, size);
+  if(iconVal) return esc(iconVal);
+  return ic('book', size);
+}
 
 function toast(msg){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -986,7 +1027,7 @@ function renderSubjects(){
   }
   wrap.innerHTML = subs.map((s,i)=>`
     <button class="subject-card" style="animation-delay:${i*40}ms" onclick="openSubject('${s.id}')">
-      <div class="subject-icon">${s.icon ? esc(s.icon) : ic('book',24)}</div>
+      <div class="subject-icon">${renderSubjectIcon(s.icon, 24)}</div>
       <div class="subject-name">${esc(s.name)}</div>
       <div class="subject-meta">${teacherCountFor(s.id)} مدرّس</div>
     </button>
@@ -1471,6 +1512,7 @@ function adminMatches(text){
 function setAdminTab(t){
   adminTab=t; adminSearchQuery='';
   editingSubjectId=null; editingTeacherId=null; editingChapterId=null; editingLectureId=null;
+  selectedSubjectIconKey='';
   renderAdminBody();
 }
 function doLogout(){ auth.signOut(); closeModal(); }
@@ -1795,9 +1837,11 @@ function saveAnnouncement(active){
 let editingSubjectId = null;
 function renderAdminSubjects(body){
   body.innerHTML = `
-    <div class="field-row">
-      <div class="field"><label>اسم المادة</label><input id="newSubjName" placeholder="مثال: الرياضيات"></div>
-      <div class="field" style="max-width:80px;"><label>أيقونة</label><input id="newSubjIcon" placeholder="📘"></div>
+    <div class="field"><label>اسم المادة</label><input id="newSubjName" placeholder="مثال: الرياضيات"></div>
+    <div class="field">
+      <label>أيقونة المادة</label>
+      <div id="subjIconPicker" class="icon-picker"></div>
+      <input id="newSubjIconCustom" placeholder="أو اكتب إيموجي خاص (اختياري)" style="margin-top:8px;">
     </div>
     <button class="btn-primary" id="subjSubmitBtn" onclick="addSubject()">+ إضافة مادة</button>
     <button class="btn-secondary hidden" id="subjCancelBtn" onclick="cancelEditSubject()">إلغاء التعديل</button>
@@ -1808,7 +1852,8 @@ function renderAdminSubjects(body){
             <button ${i===0?'disabled':''} onclick="reorderItem('subjects', SUBJECTS, '${s.id}', -1)">${ic('chevronUp',12)}</button>
             <button ${i===SUBJECTS.length-1?'disabled':''} onclick="reorderItem('subjects', SUBJECTS, '${s.id}', 1)">${ic('chevronDown',12)}</button>
           </div>
-          <div class="mr-title">${s.active===false?'<span class="inactive-badge">معطّلة</span>':''}${s.icon?esc(s.icon)+' ':''}${esc(s.name)}</div>
+          <div class="mr-icon-slot">${renderSubjectIcon(s.icon, 20)}</div>
+          <div class="mr-title">${s.active===false?'<span class="inactive-badge">معطّلة</span>':''}${esc(s.name)}</div>
           <div class="mr-actions">
             <button class="${s.active!==false?'toggle-on':''}" onclick="toggleActive('subjects','${s.id}',${s.active!==false})">${ic(s.active!==false?'eye':'eyeOff',15)}</button>
             <button onclick="editSubject('${s.id}')">${ic('edit',15)}</button>
@@ -1817,18 +1862,32 @@ function renderAdminSubjects(body){
         </div>`;
       }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد مواد بعد</div>'}
     </div>`;
+  renderSubjectIconPicker();
+}
+let selectedSubjectIconKey = '';
+function renderSubjectIconPicker(){
+  $('subjIconPicker').innerHTML = SUBJECT_ICON_PRESETS.map(p=>`
+    <button type="button" class="icon-picker-btn ${selectedSubjectIconKey===p.key?'selected':''}" onclick="pickSubjectIcon('${p.key}')">
+      ${ic(p.key,20)}<span>${p.label}</span>
+    </button>
+  `).join('');
+}
+function pickSubjectIcon(key){
+  selectedSubjectIconKey = (selectedSubjectIconKey===key) ? '' : key;
+  renderSubjectIconPicker();
 }
 function addSubject(){
-  const name = $('newSubjName').value.trim(), icon = $('newSubjIcon').value.trim();
+  const name = $('newSubjName').value.trim(), customIcon = $('newSubjIconCustom').value.trim();
   if(!name) return toast('اكتب اسم المادة');
+  const icon = customIcon || selectedSubjectIconKey || '';
   if(editingSubjectId){
-    db.collection('subjects').doc(editingSubjectId).update({name, icon: icon||'📘'})
-      .then(()=>{ toast('تم تحديث المادة'); editingSubjectId=null; renderAdminBody(); })
+    db.collection('subjects').doc(editingSubjectId).update({name, icon: icon})
+      .then(()=>{ toast('تم تحديث المادة'); editingSubjectId=null; selectedSubjectIconKey=''; renderAdminBody(); })
       .catch(e=>toast('خطأ: '+e.message));
     return;
   }
-  db.collection('subjects').add({name, icon: icon||'📘', order: Date.now()})
-    .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
+  db.collection('subjects').add({name, icon: icon, order: Date.now()})
+    .then(()=>{ toast('تمت الإضافة'); selectedSubjectIconKey=''; renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
 function editSubject(id){
@@ -1836,7 +1895,10 @@ function editSubject(id){
   if(!s) return;
   editingSubjectId = id;
   $('newSubjName').value = s.name || '';
-  $('newSubjIcon').value = s.icon || '';
+  const isPreset = s.icon && ICONS[s.icon];
+  selectedSubjectIconKey = isPreset ? s.icon : '';
+  $('newSubjIconCustom').value = isPreset ? '' : (s.icon || '');
+  renderSubjectIconPicker();
   const btn = $('subjSubmitBtn');
   btn.textContent = '✓ حفظ التعديلات';
   btn.scrollIntoView({behavior:'smooth', block:'center'});
