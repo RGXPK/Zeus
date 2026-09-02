@@ -1318,12 +1318,33 @@ function detectDevice(){
   if(/iPhone/.test(ua)) return 'iPhone';
   if(/Android/.test(ua)){
     const m = ua.match(/Android[^;]*;\s*([^)]+)\)/);
-    return m ? ('Android — ' + m[1].split('Build')[0].trim()) : 'Android';
+    const raw = m ? m[1].split('Build')[0].trim() : '';
+    // كروم الحديث يستبدل اسم الجهاز الحقيقي بحرف عام مثل "K" لأسباب خصوصية —
+    // هذا مو خطأ بالكود، لهذا نرجع "Android" بدل عرض حرف مبهم لوحده.
+    if(raw && raw.length > 2) return 'Android — ' + raw;
+    return 'Android';
   }
   if(/Windows/.test(ua)) return 'Windows';
   if(/Macintosh/.test(ua)) return 'Mac';
   if(/Linux/.test(ua)) return 'Linux';
   return 'غير معروف';
+}
+/* يحاول ياخذ اسم الجهاز الحقيقي عبر Client Hints API (يدعمها كروم/إيدج
+   الحديثة) قبل ما يرجع لتحليل UA العادي أعلاه. هذا يتجاوز مشكلة "K" بأغلب
+   الحالات على كروم/أندرويد، لكن سفاري (آيفون/آيباد) ما توفر هذا أبدًا —
+   قيد من أبل نفسها، مو من الموقع. */
+function detectDeviceAsync(){
+  if(navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){
+    return navigator.userAgentData.getHighEntropyValues(['model','platform','platformVersion'])
+      .then(info=>{
+        const model = (info.model||'').trim();
+        const platform = (info.platform||'').trim();
+        if(model) return platform ? (platform + ' — ' + model) : model;
+        return detectDevice();
+      })
+      .catch(()=> detectDevice());
+  }
+  return Promise.resolve(detectDevice());
 }
 function detectBrowser(){
   const ua = navigator.userAgent || '';
@@ -1357,11 +1378,11 @@ function stopVisitorTracking(){
 }
 function sendVisitorHeartbeat(user){
   const ref = db.collection('visitors').doc(user.uid);
-  fetchVisitorIP().then(ip=>{
+  Promise.all([fetchVisitorIP(), detectDeviceAsync()]).then(([ip, device])=>{
     ref.get().then(snap=>{
       const data = {
         ip: ip || 'غير معروف',
-        device: detectDevice(),
+        device: device,
         browser: detectBrowser(),
         lastSeenAt: firebase.firestore.FieldValue.serverTimestamp()
       };
