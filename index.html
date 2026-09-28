@@ -385,10 +385,10 @@ img{max-width:100%; display:block;}
 }
 .nav-btn{
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:4px; font-size:10.5px; color:var(--text-faint); font-weight:600;
-  position:relative;
+  gap:4px; font-size:9.5px; color:var(--text-faint); font-weight:600;
+  position:relative; padding:0 2px;
 }
-.nav-btn .ni{width:20px; height:20px; display:flex; align-items:center; justify-content:center; transition:.2s;}
+.nav-btn .ni{width:19px; height:19px; display:flex; align-items:center; justify-content:center; transition:.2s;}
 .nav-btn .ni svg{width:100%; height:100%;}
 .nav-btn.active{color:var(--gold);}
 .nav-btn.active .ni{transform:translateY(-1px);}
@@ -584,6 +584,7 @@ img{max-width:100%; display:block;}
 }
 .install-banner .ib-text{flex:1; font-size:12.5px;}
 .install-banner .ib-text b{display:block; font-size:13.5px; margin-bottom:2px;}
+.install-banner .ib-text .icn{display:inline-flex; vertical-align:-2px; color:var(--teal);}
 .install-banner button.ib-go{background:var(--teal); color:#04211f; padding:8px 16px; border-radius:10px; font-weight:800; font-size:12.5px;}
 .install-banner button.ib-close{color:var(--text-faint); font-size:16px; padding:4px;}
 
@@ -647,7 +648,7 @@ img{max-width:100%; display:block;}
 
   <div id="homeContent">
     <div id="continueWatchSlot"></div>
-    <div class="section-label"><span class="dot"></span>المواد الدراسية</div>
+    <div class="section-label"><span class="dot"></span><span id="subjectsPageLabel">المواد الدراسية</span></div>
     <div id="subjectsGrid" class="grid-subjects"></div>
   </div>
 </div>
@@ -690,6 +691,7 @@ img{max-width:100%; display:block;}
   <button class="nav-btn" data-tab="lectures" onclick="navTab('lectures')"><span class="ni" data-icon="playCircle"></span>المحاضرات</button>
   <button class="nav-btn" data-tab="chapters" onclick="navTab('chapters')"><span class="ni" data-icon="layers"></span>الفصول</button>
   <button class="nav-btn" data-tab="teachers" onclick="navTab('teachers')"><span class="ni" data-icon="users"></span>المدرسين</button>
+  <button class="nav-btn" data-tab="exams" onclick="navTab('exams')"><span class="ni" data-icon="notebook"></span>الامتحانات</button>
   <button class="nav-btn active" data-tab="subjects" onclick="navTab('subjects')"><span class="ni" data-icon="grid"></span>المواد</button>
 </div>
 
@@ -800,9 +802,9 @@ try {
 /* ---------------------------------------------------------------------- */
 /* STATE                                                                   */
 /* ---------------------------------------------------------------------- */
-let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [], ASSISTANTS = [], VISITORS = [];
+let SUBJECTS = [], TEACHERS = [], CHAPTERS = [], LECTURES = [], STUDENTS = [], ASSISTANTS = [], VISITORS = [], EXAMS = [];
 let ANNOUNCEMENT = null;
-let cur = { subjectId:null, teacherId:null, chapterId:null };
+let cur = { subjectId:null, teacherId:null, chapterId:null, mode:'lectures' };
 let isAdmin = false;
 let currentUser = null; // any authenticated user (student or admin)
 let unsub = [];
@@ -841,6 +843,7 @@ const ICONS = {
   subj_islamic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3.5a8.5 8.5 0 1 0 3.4 15.9A9.5 9.5 0 1 1 17 3.5z"/><path d="M4.5 3.6l.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4L2.6 5.5l1.4-.5.5-1.4z" fill="currentColor" stroke="none"/></svg>',
   subj_arabic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22l4-1 13-13-3-3L3 18l-1 4z"/><path d="M15 3.5l4.5 4.5"/></svg>',
   subj_english: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.7 15.7 0 0 1 4 10 15.7 15.7 0 0 1-4 10 15.7 15.7 0 0 1-4-10 15.7 15.7 0 0 1 4-10z"/></svg>',
+  iosShare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
   book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
   bookOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
   play: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
@@ -947,6 +950,12 @@ function startListeners(){
     if(!$('view-lectures').classList.contains('hidden')) renderLectures();
     if(!$('view-chapters').classList.contains('hidden')) renderChapters();
   }, err=>console.warn(err)));
+
+  unsub.push(db.collection('exams').orderBy('order').onSnapshot(snap=>{
+    EXAMS = snap.docs.map(d=>Object.assign({id:d.id}, d.data()));
+    if(!$('view-lectures').classList.contains('hidden')) renderLectures();
+    if(!$('view-chapters').classList.contains('hidden')) renderChapters();
+  }, err=>console.warn(err)));
 }
 
 /* ---------------------------------------------------------------------- */
@@ -992,11 +1001,24 @@ function showView(name){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
   window.scrollTo({top:0, behavior:'smooth'});
 }
-function goHome(){ cur = {subjectId:null, teacherId:null, chapterId:null}; renderContinueWatch(); showView('subjects'); }
+function goHome(){ cur = {subjectId:null, teacherId:null, chapterId:null, mode:'lectures'}; renderContinueWatch(); renderSubjects(); showView('subjects'); }
 function navTab(tab){
-  if(tab==='subjects') return showView('subjects');
+  if(tab==='subjects'){
+    cur.mode='lectures'; cur.subjectId=null; cur.teacherId=null; cur.chapterId=null;
+    renderSubjects();
+    showView('subjects');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='subjects'));
+    return;
+  }
+  if(tab==='exams'){
+    cur.mode='exams'; cur.subjectId=null; cur.teacherId=null; cur.chapterId=null;
+    renderSubjects();
+    showView('subjects');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='exams'));
+    return;
+  }
   if(tab==='teachers'){
-    if(!cur.subjectId){ toast('اختر مادة أولًا من تبويب المواد'); return showView('subjects'); }
+    if(!cur.subjectId){ toast(cur.mode==='exams' ? 'اختر مادة أولًا من تبويب الامتحانات' : 'اختر مادة أولًا من تبويب المواد'); return showView('subjects'); }
     return showView('teachers');
   }
   if(tab==='chapters'){
@@ -1013,6 +1035,17 @@ $('crumbToTeachers').addEventListener('click', ()=>showView('teachers'));
 $('crumbToTeachers2').addEventListener('click', ()=>showView('teachers'));
 $('crumbToChapters').addEventListener('click', ()=>showView('chapters'));
 
+/* يحدّد هل مدرّس/فصل معيّن ينتمي للوضع الحالي (محاضرات أو امتحانات).
+   الحقول القديمة الناقصة (section/contentType) تُعامل كـ"محاضرات" افتراضيًا
+   حفاظًا على توافق البيانات اللي كانت موجودة قبل هذي الميزة. */
+function teacherMatchesMode(t){
+  const sec = t.section || 'lectures';
+  return sec === cur.mode || sec === 'both';
+}
+function chapterMatchesMode(c){
+  return (c.contentType || 'lectures') === cur.mode;
+}
+
 /* ---------------------------------------------------------------------- */
 /* RENDER: SUBJECTS                                                        */
 /* ---------------------------------------------------------------------- */
@@ -1020,12 +1053,13 @@ function renderSubjects(){
   updateHeroStats();
   renderContinueWatch();
   const wrap = $('subjectsGrid');
-  const subs = activeOnly(SUBJECTS);
-  if(!subs.length){
-    wrap.innerHTML = emptyHTML('grid','لا توجد مواد بعد','الأدمن لسا ما أضاف أي مادة دراسية.');
+  const subjWithMatch = activeOnly(SUBJECTS).filter(s=> activeOnly(TEACHERS).some(t=>t.subjectId===s.id && teacherMatchesMode(t)));
+  document.getElementById('subjectsPageLabel') && (document.getElementById('subjectsPageLabel').textContent = cur.mode==='exams' ? 'الامتحانات' : 'المواد الدراسية');
+  if(!subjWithMatch.length){
+    wrap.innerHTML = emptyHTML('grid', cur.mode==='exams' ? 'لا توجد امتحانات بعد' : 'لا توجد مواد بعد', 'الأدمن لسا ما أضاف محتوى لهذا القسم.');
     return;
   }
-  wrap.innerHTML = subs.map((s,i)=>`
+  wrap.innerHTML = subjWithMatch.map((s,i)=>`
     <button class="subject-card" style="animation-delay:${i*40}ms" onclick="openSubject('${s.id}')">
       <div class="subject-icon">${renderSubjectIcon(s.icon, 24)}</div>
       <div class="subject-name">${esc(s.name)}</div>
@@ -1039,7 +1073,7 @@ function updateHeroStats(){
   if(elT) elT.textContent = activeOnly(TEACHERS).length;
   if(elL) elL.textContent = activeOnly(LECTURES).length;
 }
-function teacherCountFor(subjectId){ return activeOnly(TEACHERS).filter(t=>t.subjectId===subjectId).length; }
+function teacherCountFor(subjectId){ return activeOnly(TEACHERS).filter(t=>t.subjectId===subjectId && teacherMatchesMode(t)).length; }
 
 function openSubject(id){
   cur.subjectId = id; cur.teacherId=null; cur.chapterId=null;
@@ -1057,10 +1091,10 @@ function renderTeachersTitle(){
 /* RENDER: TEACHERS                                                        */
 /* ---------------------------------------------------------------------- */
 function renderTeachers(){
-  const list = activeOnly(TEACHERS).filter(t=>t.subjectId===cur.subjectId);
+  const list = activeOnly(TEACHERS).filter(t=>t.subjectId===cur.subjectId && teacherMatchesMode(t));
   const wrap = $('teachersList');
   if(!list.length){
-    wrap.innerHTML = emptyHTML('users','لا يوجد مدرّسين بعد','الأدمن لسا ما أضاف مدرّسين لهذه المادة.');
+    wrap.innerHTML = emptyHTML('users','لا يوجد مدرّسين بعد','الأدمن لسا ما أضاف مدرّسين لهذا القسم بهذه المادة.');
     return;
   }
   wrap.innerHTML = `<div class="grid-teachers">${list.map((t,i)=>`
@@ -1071,7 +1105,7 @@ function renderTeachers(){
     </button>
   `).join('')}</div>`;
 }
-function chapterCountFor(teacherId){ return activeOnly(CHAPTERS).filter(c=>c.teacherId===teacherId).length; }
+function chapterCountFor(teacherId){ return activeOnly(CHAPTERS).filter(c=>c.teacherId===teacherId && chapterMatchesMode(c)).length; }
 
 function openTeacher(id){
   cur.teacherId = id; cur.chapterId = null;
@@ -1089,17 +1123,18 @@ function renderChaptersTitle(){
 /* RENDER: CHAPTERS                                                        */
 /* ---------------------------------------------------------------------- */
 function renderChapters(){
-  const list = activeOnly(CHAPTERS).filter(c=>c.teacherId===cur.teacherId);
+  const list = activeOnly(CHAPTERS).filter(c=>c.teacherId===cur.teacherId && chapterMatchesMode(c));
   const wrap = $('chaptersList');
   if(!list.length){
-    wrap.innerHTML = emptyHTML('layers','لا توجد فصول بعد','الأدمن لسا ما أضاف فصولًا لهذا المدرّس.');
+    wrap.innerHTML = emptyHTML('layers','لا توجد فصول بعد', cur.mode==='exams' ? 'الأدمن لسا ما أضاف فصول امتحانات لهذا المدرّس.' : 'الأدمن لسا ما أضاف فصولًا لهذا المدرّس.');
     return;
   }
   const t = TEACHERS.find(x=>x.id===cur.teacherId);
+  const itemLabel = cur.mode==='exams' ? 'امتحان' : 'محاضرة';
   wrap.innerHTML = list.map((c,i)=>{
-    const lecs = activeOnly(LECTURES).filter(l=>l.chapterId===c.id);
-    const done = lecs.filter(l=>isDone(l.id)).length;
-    const pct = lecs.length ? Math.round(done/lecs.length*100) : 0;
+    const items = cur.mode==='exams' ? activeOnly(EXAMS).filter(e=>e.chapterId===c.id) : activeOnly(LECTURES).filter(l=>l.chapterId===c.id);
+    const done = items.filter(x=>isDone(x.id)).length;
+    const pct = items.length ? Math.round(done/items.length*100) : 0;
     return `
     <div class="chapter-card" style="animation-delay:${i*50}ms">
       <div class="chapter-top">
@@ -1107,16 +1142,16 @@ function renderChapters(){
           <div class="chapter-title">${esc(c.title)}</div>
           <div class="chapter-teacher">مع الأستاذ ${esc(t?t.name:'')}${c.year?(' '+esc(c.year)):''}</div>
         </div>
-        <div class="chapter-badge">${c.icon ? esc(c.icon) : ic('bookOpen',20)}</div>
+        <div class="chapter-badge">${c.icon ? esc(c.icon) : ic(cur.mode==='exams'?'notebook':'bookOpen',20)}</div>
       </div>
       <div class="chapter-stats">
         <div><div class="stat-num">${done}</div><div class="stat-label">مكتملة</div></div>
-        <div><div class="stat-num">${lecs.length}</div><div class="stat-label">محاضرة</div></div>
+        <div><div class="stat-num">${items.length}</div><div class="stat-label">${itemLabel}</div></div>
       </div>
       <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
       <div class="progress-label">نسبة الإنجاز: ${pct}%</div>
       <button class="btn-start" onclick="openChapter('${c.id}')">
-        <span>${ic('chevronLeft',15)}</span><span>ابدأ التعلم</span>
+        <span>${ic('chevronLeft',15)}</span><span>${cur.mode==='exams' ? 'عرض الامتحانات' : 'ابدأ التعلم'}</span>
       </button>
     </div>`;
   }).join('');
@@ -1131,14 +1166,15 @@ function openChapter(id){
 function renderLecturesTitle(){
   const c = CHAPTERS.find(x=>x.id===cur.chapterId);
   const t = TEACHERS.find(x=>x.id===cur.teacherId);
-  $('lecturesTitle').textContent = c ? c.title : 'المحاضرات';
+  $('lecturesTitle').textContent = c ? c.title : (cur.mode==='exams' ? 'الامتحانات' : 'المحاضرات');
   $('lecturesSub').textContent = t ? ('مع الأستاذ ' + t.name + (c && c.year ? (' — '+c.year) : '')) : '';
 }
 
 /* ---------------------------------------------------------------------- */
-/* RENDER: LECTURES                                                        */
+/* RENDER: LECTURES / EXAMS                                                */
 /* ---------------------------------------------------------------------- */
 function renderLectures(){
+  if(cur.mode==='exams') return renderExamsList();
   const list = activeOnly(LECTURES).filter(l=>l.chapterId===cur.chapterId);
   const wrap = $('lecturesList');
   if(!list.length){
@@ -1152,6 +1188,44 @@ function renderLectures(){
       <div class="lecture-play">${ic('play',12)}</div>
     </button>
   `).join('');
+}
+function renderExamsList(){
+  const list = activeOnly(EXAMS).filter(e=>e.chapterId===cur.chapterId);
+  const wrap = $('lecturesList');
+  if(!list.length){
+    wrap.innerHTML = emptyHTML('notebook','لا توجد امتحانات بعد','الأدمن لسا ما أضاف امتحانات لهذا الفصل.');
+    return;
+  }
+  // روابط <a> حقيقية بدل أزرار + window.open: تفتح بشكل موثوق بالتطبيق المثبت (PWA) وبكل المتصفحات
+  wrap.innerHTML = list.map((e,i)=>`
+    <a class="lecture-row ${isDone(e.id)?'done':''}" style="animation-delay:${i*30}ms"
+       href="${esc(resolveExamPdfUrl(e.pdfUrl))}" target="_blank" rel="noopener noreferrer"
+       onclick="markExamOpened('${e.id}')">
+      <div class="lecture-num">${isDone(e.id)?ic('check',13):(i+1)}</div>
+      <div class="lecture-title">${esc(e.title)}</div>
+      <div class="lecture-play">${ic('notebook',12)}</div>
+    </a>
+  `).join('');
+}
+function markExamOpened(id){
+  setDone(id, true);
+  // نأخر إعادة الرسم شوي عشان ما نقطع فتح الرابط
+  setTimeout(()=>{ if(cur.mode==='exams') renderExamsList(); }, 400);
+}
+function openExamPdf(id){
+  const exam = EXAMS.find(x=>x.id===id);
+  if(!exam || !exam.pdfUrl) return;
+  const a = document.createElement('a');
+  a.href = resolveExamPdfUrl(exam.pdfUrl);
+  a.target = '_blank'; a.rel = 'noopener noreferrer';
+  document.body.appendChild(a); a.click(); a.remove();
+  markExamOpened(id);
+}
+function resolveExamPdfUrl(url){
+  url = (url||'').trim();
+  let m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/) || url.match(/[?&]id=([^&]+)/);
+  if(m && url.includes('drive.google.com')) return `https://drive.google.com/file/d/${m[1]}/view`;
+  return url;
 }
 
 function emptyHTML(iconName,title,sub){
@@ -1400,14 +1474,19 @@ function detectBrowser(){
 }
 function fetchVisitorIP(){
   if(cachedVisitorIP) return Promise.resolve(cachedVisitorIP);
-  return fetch('https://api.ipify.org?format=json')
+  const controller = ('AbortController' in window) ? new AbortController() : null;
+  const timer = controller ? setTimeout(()=>controller.abort(), 5000) : null;
+  return fetch('https://api.ipify.org?format=json', controller ? {signal: controller.signal} : {})
     .then(r=>r.json()).then(d=>{ cachedVisitorIP = d.ip; return cachedVisitorIP; })
-    .catch(()=>null);
+    .catch(()=>null)
+    .finally(()=>{ if(timer) clearTimeout(timer); });
 }
 function startVisitorTracking(user){
   if(visitorTrackingStarted) return;
   visitorTrackingStarted = true;
-  sendVisitorHeartbeat(user);
+  // نأخر أول نبضة قليلًا عشان ما تزاحم تحميل المواد/المحاضرات الأساسية على
+  // الإنترنت البطيء — التتبع مو حرج الوقت، لكن محتوى الموقع نفسه حرج.
+  setTimeout(()=> sendVisitorHeartbeat(user), 2500);
   visitorHeartbeatTimer = setInterval(()=>sendVisitorHeartbeat(user), 60000);
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState==='visible') sendVisitorHeartbeat(user);
@@ -1483,6 +1562,7 @@ function renderAdmin(){
         <button class="admin-tab ${adminTab==='teachers'?'active':''}" onclick="setAdminTab('teachers')">المدرسين</button>
         <button class="admin-tab ${adminTab==='chapters'?'active':''}" onclick="setAdminTab('chapters')">الفصول</button>
         <button class="admin-tab ${adminTab==='lectures'?'active':''}" onclick="setAdminTab('lectures')">المحاضرات</button>
+        <button class="admin-tab ${adminTab==='exams'?'active':''}" onclick="setAdminTab('exams')">${ic('notebook',13)} الامتحانات</button>
         <button class="admin-tab ${adminTab==='assistants'?'active':''}" onclick="setAdminTab('assistants')">${ic('users',13)} المساعدين</button>
         <button class="admin-tab ${adminTab==='visitors'?'active':''}" onclick="setAdminTab('visitors')">${ic('users',13)} الزوّار</button>
         <button class="admin-tab ${adminTab==='settings'?'active':''}" onclick="setAdminTab('settings')">${ic('settings',13)} الإعدادات</button>
@@ -1511,8 +1591,8 @@ function adminMatches(text){
 }
 function setAdminTab(t){
   adminTab=t; adminSearchQuery='';
-  editingSubjectId=null; editingTeacherId=null; editingChapterId=null; editingLectureId=null;
-  selectedSubjectIconKey='';
+  editingSubjectId=null; editingTeacherId=null; editingChapterId=null; editingLectureId=null; editingExamId=null;
+  selectedSubjectIconKey=''; teachSectionValue='lectures'; chapContentTypeValue='lectures';
   renderAdminBody();
 }
 function doLogout(){ auth.signOut(); closeModal(); }
@@ -1716,6 +1796,7 @@ function renderAdminBody(){
   if(adminTab==='teachers') return renderAdminTeachers(body);
   if(adminTab==='chapters') return renderAdminChapters(body);
   if(adminTab==='lectures') return renderAdminLectures(body);
+  if(adminTab==='exams') return renderAdminExams(body);
   if(adminTab==='assistants') return renderAdminAssistants(body);
   if(adminTab==='visitors') return renderAdminVisitors(body);
   if(adminTab==='settings') return renderAdminSettings(body);
@@ -1915,12 +1996,21 @@ function renderAdminTeachers(body){
     </div>
     <div class="field"><label>اسم المدرّس</label><input id="newTeachName" placeholder="مثال: حيدر عبدالائمة"></div>
     <div class="field"><label>رابط صورة (اختياري)</label><input id="newTeachPhoto" placeholder="https://..."></div>
+    <div class="field">
+      <label>يظهر في</label>
+      <div class="admin-tabs" id="teachSectionPicker">
+        <button type="button" class="admin-tab ${teachSectionValue==='lectures'?'active':''}" onclick="setTeachSection('lectures')">المحاضرات</button>
+        <button type="button" class="admin-tab ${teachSectionValue==='exams'?'active':''}" onclick="setTeachSection('exams')">الامتحانات</button>
+        <button type="button" class="admin-tab ${teachSectionValue==='both'?'active':''}" onclick="setTeachSection('both')">الاثنين</button>
+      </div>
+    </div>
     <button class="btn-primary" id="teachSubmitBtn" onclick="addTeacher()">+ إضافة مدرّس</button>
     <button class="btn-secondary hidden" id="teachCancelBtn" onclick="cancelEditTeacher()">إلغاء التعديل</button>
     <div style="margin-top:18px;">
       ${TEACHERS.filter(t=>adminMatches(t.name)).map(t=>{
         const sibs = TEACHERS.filter(x=>x.subjectId===t.subjectId);
         const i = sibs.findIndex(x=>x.id===t.id);
+        const sectionLabel = t.section==='exams'?'الامتحانات':(t.section==='both'?'محاضرات وامتحانات':'المحاضرات');
         return `
         <div class="manage-row ${t.active===false?'inactive':''}">
           <div class="mr-reorder">
@@ -1929,7 +2019,7 @@ function renderAdminTeachers(body){
           </div>
           <div>
             <div class="mr-title">${t.active===false?'<span class="inactive-badge">معطّل</span>':''}${esc(t.name)}</div>
-            <div class="mr-sub">${esc(subjName(t.subjectId))}</div>
+            <div class="mr-sub">${esc(subjName(t.subjectId))} • ${sectionLabel}</div>
           </div>
           <div class="mr-actions">
             <button class="${t.active!==false?'toggle-on':''}" onclick="toggleActive('teachers','${t.id}',${t.active!==false})">${ic(t.active!==false?'eye':'eyeOff',15)}</button>
@@ -1940,25 +2030,36 @@ function renderAdminTeachers(body){
       }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا يوجد مدرّسين بعد</div>'}
     </div>`;
 }
+let teachSectionValue = 'lectures';
+function setTeachSection(v){
+  teachSectionValue = v;
+  const picker = document.getElementById('teachSectionPicker');
+  if(picker) picker.querySelectorAll('.admin-tab').forEach((b,i)=>{
+    b.classList.toggle('active', ['lectures','exams','both'][i]===v);
+  });
+}
 function subjName(id){ const s=SUBJECTS.find(x=>x.id===id); return s?s.name:'—'; }
 function addTeacher(){
   const subjectId = $('newTeachSubj').value, name = $('newTeachName').value.trim(), photo = $('newTeachPhoto').value.trim();
   if(!subjectId) return toast('أضف مادة أولًا');
   if(!name) return toast('اكتب اسم المدرّس');
+  const section = teachSectionValue;
   if(editingTeacherId){
-    db.collection('teachers').doc(editingTeacherId).update({subjectId, name, photo})
-      .then(()=>{ toast('تم تحديث المدرّس'); editingTeacherId=null; renderAdminBody(); })
+    db.collection('teachers').doc(editingTeacherId).update({subjectId, name, photo, section})
+      .then(()=>{ toast('تم تحديث المدرّس'); editingTeacherId=null; teachSectionValue='lectures'; renderAdminBody(); })
       .catch(e=>toast('خطأ: '+e.message));
     return;
   }
-  db.collection('teachers').add({subjectId, name, photo, order: Date.now()})
-    .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
+  db.collection('teachers').add({subjectId, name, photo, section, order: Date.now()})
+    .then(()=>{ toast('تمت الإضافة'); teachSectionValue='lectures'; renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
 function editTeacher(id){
   const t = TEACHERS.find(x=>x.id===id);
   if(!t) return;
   editingTeacherId = id;
+  teachSectionValue = t.section || 'lectures';
+  renderAdminBody();
   $('newTeachSubj').value = t.subjectId || '';
   $('newTeachName').value = t.name || '';
   $('newTeachPhoto').value = t.photo || '';
@@ -1967,13 +2068,20 @@ function editTeacher(id){
   btn.scrollIntoView({behavior:'smooth', block:'center'});
   $('teachCancelBtn').classList.remove('hidden');
 }
-function cancelEditTeacher(){ editingTeacherId=null; renderAdminBody(); }
+function cancelEditTeacher(){ editingTeacherId=null; teachSectionValue='lectures'; renderAdminBody(); }
 
 /* ---- ADMIN: CHAPTERS ---- */
 function renderAdminChapters(body){
   body.innerHTML = `
     <div class="field"><label>المادة</label>
       <select id="newChapSubj" onchange="filterChapterTeacherSelect()">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
+    </div>
+    <div class="field">
+      <label>نوع المحتوى</label>
+      <div class="admin-tabs" id="chapTypePicker">
+        <button type="button" class="admin-tab ${chapContentTypeValue==='lectures'?'active':''}" onclick="setChapContentType('lectures')">فيديو (محاضرات)</button>
+        <button type="button" class="admin-tab ${chapContentTypeValue==='exams'?'active':''}" onclick="setChapContentType('exams')">PDF (امتحانات)</button>
+      </div>
     </div>
     <div class="field"><label>المدرّس</label>
       <select id="newChapTeach"></select>
@@ -1989,6 +2097,7 @@ function renderAdminChapters(body){
       ${CHAPTERS.filter(c=>adminMatches(c.title)).map(c=>{
         const sibs = CHAPTERS.filter(x=>x.teacherId===c.teacherId);
         const i = sibs.findIndex(x=>x.id===c.id);
+        const typeLabel = c.contentType==='exams' ? 'PDF امتحان' : 'فيديو';
         return `
         <div class="manage-row ${c.active===false?'inactive':''}">
           <div class="mr-reorder">
@@ -1997,7 +2106,7 @@ function renderAdminChapters(body){
           </div>
           <div>
             <div class="mr-title">${c.active===false?'<span class="inactive-badge">معطّل</span>':''}${esc(c.title)}</div>
-            <div class="mr-sub">${esc(subjName(c.subjectId))} • ${esc(teachName(c.teacherId))}${c.year?(' — '+esc(c.year)):''}</div>
+            <div class="mr-sub">${esc(subjName(c.subjectId))} • ${esc(teachName(c.teacherId))}${c.year?(' — '+esc(c.year)):''} • ${typeLabel}</div>
           </div>
           <div class="mr-actions">
             <button class="${c.active!==false?'toggle-on':''}" onclick="toggleActive('chapters','${c.id}',${c.active!==false})">${ic(c.active!==false?'eye':'eyeOff',15)}</button>
@@ -2009,11 +2118,20 @@ function renderAdminChapters(body){
     </div>`;
   filterChapterTeacherSelect();
 }
+let chapContentTypeValue = 'lectures';
+function setChapContentType(v){
+  chapContentTypeValue = v;
+  const picker = document.getElementById('chapTypePicker');
+  if(picker) picker.querySelectorAll('.admin-tab').forEach((b,i)=>{
+    b.classList.toggle('active', ['lectures','exams'][i]===v);
+  });
+  filterChapterTeacherSelect();
+}
 function filterChapterTeacherSelect(){
   const subjSel = $('newChapSubj'), teachSel = $('newChapTeach');
   if(!subjSel || !teachSel) return;
-  const list = TEACHERS.filter(t=>t.subjectId===subjSel.value);
-  teachSel.innerHTML = list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">لا يوجد مدرّس بهذه المادة</option>';
+  const list = TEACHERS.filter(t=>t.subjectId===subjSel.value && ((t.section||'lectures')===chapContentTypeValue || t.section==='both'));
+  teachSel.innerHTML = list.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('') || '<option value="">لا يوجد مدرّس مناسب لهذا النوع بهذه المادة</option>';
 }
 function teachName(id){ const t=TEACHERS.find(x=>x.id===id); return t?t.name:'—'; }
 let editingChapterId = null;
@@ -2023,13 +2141,14 @@ function addChapter(){
   if(!teacherId) return toast('أضف مدرّسًا أولًا');
   if(!title) return toast('اكتب عنوان الفصل');
   const teacher = TEACHERS.find(t=>t.id===teacherId);
+  const contentType = chapContentTypeValue;
   if(editingChapterId){
-    db.collection('chapters').doc(editingChapterId).update({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚'})
+    db.collection('chapters').doc(editingChapterId).update({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚', contentType})
       .then(()=>{ toast('تم تحديث الفصل'); editingChapterId=null; renderAdminBody(); })
       .catch(e=>toast('خطأ: '+e.message));
     return;
   }
-  db.collection('chapters').add({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚', order: Date.now()})
+  db.collection('chapters').add({teacherId, subjectId: teacher?teacher.subjectId:null, title, year, icon: icon||'📚', contentType, order: Date.now()})
     .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
     .catch(e=>toast('خطأ: '+e.message));
 }
@@ -2037,6 +2156,8 @@ function editChapter(id){
   const c = CHAPTERS.find(x=>x.id===id);
   if(!c) return;
   editingChapterId = id;
+  chapContentTypeValue = c.contentType || 'lectures';
+  renderAdminBody();
   $('newChapSubj').value = c.subjectId || '';
   filterChapterTeacherSelect();
   $('newChapTeach').value = c.teacherId || '';
@@ -2048,7 +2169,7 @@ function editChapter(id){
   btn.scrollIntoView({behavior:'smooth', block:'center'});
   $('chapCancelBtn').classList.remove('hidden');
 }
-function cancelEditChapter(){ editingChapterId=null; renderAdminBody(); }
+function cancelEditChapter(){ editingChapterId=null; chapContentTypeValue='lectures'; renderAdminBody(); }
 
 /* ---- ADMIN: LECTURES ---- */
 let draftServers = [{label:'سيرفر 1', url:''}];
@@ -2112,9 +2233,85 @@ function chapSubjId(id){ const c=CHAPTERS.find(x=>x.id===id); return c?c.subject
 function filterLectureChapterSelect(){
   const subjSel = $('newLecSubj'), chapSel = $('newLecChap');
   if(!subjSel || !chapSel) return;
-  const list = CHAPTERS.filter(c=>c.subjectId===subjSel.value);
-  chapSel.innerHTML = list.map(c=>`<option value="${c.id}">${esc(c.title)} — ${esc(teachName(c.teacherId))}</option>`).join('') || '<option value="">لا توجد فصول بهذه المادة</option>';
+  const list = CHAPTERS.filter(c=>c.subjectId===subjSel.value && (c.contentType||'lectures')==='lectures');
+  chapSel.innerHTML = list.map(c=>`<option value="${c.id}">${esc(c.title)} — ${esc(teachName(c.teacherId))}</option>`).join('') || '<option value="">لا توجد فصول محاضرات بهذه المادة</option>';
 }
+
+/* ---- ADMIN: EXAMS (امتحانات PDF — قسم منفصل عن المحاضرات) ---- */
+let editingExamId = null;
+function renderAdminExams(body){
+  body.innerHTML = `
+    <div class="field"><label>المادة</label>
+      <select id="newExamSubj" onchange="filterExamChapterSelect()">${SUBJECTS.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">أضف مادة أولًا</option>'}</select>
+    </div>
+    <div class="field"><label>الفصل (لازم يكون فصل امتحانات — أنشئه من تبويب الفصول)</label>
+      <select id="newExamChap"></select>
+    </div>
+    <div class="field"><label>عنوان الامتحان</label><input id="newExamTitle" placeholder="مثال: امتحان الفصل الأول"></div>
+    <div class="field"><label>رابط ملف PDF (Google Drive أو رابط مباشر)</label><input id="newExamUrl" placeholder="https://drive.google.com/..."></div>
+    <button class="btn-primary" id="examSubmitBtn" onclick="addExam()">+ إضافة امتحان</button>
+    <button class="btn-secondary hidden" id="examCancelBtn" onclick="cancelEditExam()">إلغاء التعديل</button>
+    <div style="margin-top:18px;">
+      ${EXAMS.filter(e=>adminMatches(e.title)).map(e=>{
+        const sibs = EXAMS.filter(x=>x.chapterId===e.chapterId);
+        const i = sibs.findIndex(x=>x.id===e.id);
+        return `
+        <div class="manage-row ${e.active===false?'inactive':''}">
+          <div class="mr-reorder">
+            <button ${i===0?'disabled':''} onclick="reorderItem('exams', EXAMS.filter(x=>x.chapterId==='${e.chapterId}'), '${e.id}', -1)">${ic('chevronUp',12)}</button>
+            <button ${i===sibs.length-1?'disabled':''} onclick="reorderItem('exams', EXAMS.filter(x=>x.chapterId==='${e.chapterId}'), '${e.id}', 1)">${ic('chevronDown',12)}</button>
+          </div>
+          <div>
+            <div class="mr-title">${e.active===false?'<span class="inactive-badge">معطّل</span>':''}${esc(e.title)}</div>
+            <div class="mr-sub">${esc(subjName(chapSubjId(e.chapterId)))} • ${esc(chapTitle(e.chapterId))}</div>
+          </div>
+          <div class="mr-actions">
+            <button class="${e.active!==false?'toggle-on':''}" onclick="toggleActive('exams','${e.id}',${e.active!==false})">${ic(e.active!==false?'eye':'eyeOff',15)}</button>
+            <button onclick="editExam('${e.id}')">${ic('edit',15)}</button>
+            <button class="del" onclick="deleteDoc('exams','${e.id}','الامتحان')">${ic('trash',15)}</button>
+          </div>
+        </div>`;
+      }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;">لا توجد امتحانات بعد</div>'}
+    </div>`;
+  filterExamChapterSelect();
+}
+function filterExamChapterSelect(){
+  const subjSel = $('newExamSubj'), chapSel = $('newExamChap');
+  if(!subjSel || !chapSel) return;
+  const list = CHAPTERS.filter(c=>c.subjectId===subjSel.value && c.contentType==='exams');
+  chapSel.innerHTML = list.map(c=>`<option value="${c.id}">${esc(c.title)} — ${esc(teachName(c.teacherId))}</option>`).join('') || '<option value="">لا توجد فصول امتحانات بهذه المادة — أنشئ فصل من نوع PDF أولًا</option>';
+}
+function addExam(){
+  const chapterId = $('newExamChap').value, title = $('newExamTitle').value.trim(), pdfUrl = $('newExamUrl').value.trim();
+  if(!chapterId) return toast('أضف فصل امتحانات أولًا (من تبويب الفصول، نوع المحتوى PDF)');
+  if(!title) return toast('اكتب عنوان الامتحان');
+  if(!pdfUrl) return toast('حط رابط ملف PDF');
+  if(editingExamId){
+    db.collection('exams').doc(editingExamId).update({chapterId, title, pdfUrl})
+      .then(()=>{ toast('تم تحديث الامتحان'); editingExamId=null; renderAdminBody(); })
+      .catch(e=>toast('خطأ: '+e.message));
+    return;
+  }
+  db.collection('exams').add({chapterId, title, pdfUrl, order: Date.now()})
+    .then(()=>{ toast('تمت الإضافة'); renderAdminBody(); })
+    .catch(e=>toast('خطأ: '+e.message));
+}
+function editExam(id){
+  const e = EXAMS.find(x=>x.id===id);
+  if(!e) return;
+  editingExamId = id;
+  const c = CHAPTERS.find(x=>x.id===e.chapterId);
+  if(c) $('newExamSubj').value = c.subjectId;
+  filterExamChapterSelect();
+  $('newExamChap').value = e.chapterId;
+  $('newExamTitle').value = e.title || '';
+  $('newExamUrl').value = e.pdfUrl || '';
+  const btn = $('examSubmitBtn');
+  btn.textContent = '✓ حفظ التعديلات';
+  btn.scrollIntoView({behavior:'smooth', block:'center'});
+  $('examCancelBtn').classList.remove('hidden');
+}
+function cancelEditExam(){ editingExamId=null; renderAdminBody(); }
 function renderServerInputs(){
   $('serverInputs').innerHTML = draftServers.map((s,i)=>`
     <div class="server-input-row">
@@ -2249,6 +2446,36 @@ function doInstall(){
 }
 window.addEventListener('appinstalled', ()=>{ $('installBanner').innerHTML = ''; });
 
+/* آيفون/آيباد (سفاري) ما تدعم beforeinstallprompt إطلاقًا — قيد من أبل نفسها
+   ينطبق على كل المواقع بالعالم. الحل الوحيد المتاح هو نوريهم يدويًا كيف
+   يسوون "إضافة إلى الشاشة الرئيسية" من زر المشاركة. */
+const IOS_INSTALL_DISMISS_KEY = 'zeus_ios_install_dismissed';
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function isStandaloneMode(){
+  return window.navigator.standalone === true ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+}
+function maybeShowIOSInstallHint(){
+  if(!isIOS() || isStandaloneMode()) return;
+  if(localStorage.getItem(IOS_INSTALL_DISMISS_KEY) === '1') return;
+  $('installBanner').innerHTML = `
+    <div class="install-banner ios-install-banner">
+      <div class="ib-text">
+        <b>ثبّت ZEUS على جهازك</b>
+        اضغط زر المشاركة ${ic('iosShare',13)} بالأسفل، ثم اختر "إضافة إلى الشاشة الرئيسية"
+      </div>
+      <button class="ib-close" onclick="dismissIOSInstallHint()">${ic('close',14)}</button>
+    </div>`;
+}
+function dismissIOSInstallHint(){
+  localStorage.setItem(IOS_INSTALL_DISMISS_KEY, '1');
+  $('installBanner').innerHTML = '';
+}
+setTimeout(maybeShowIOSInstallHint, 2000);
+
 /* ---------------------------------------------------------------------- */
 /* STATIC UI ICONS (elements that exist before any render() call)         */
 /* ---------------------------------------------------------------------- */
@@ -2287,12 +2514,14 @@ function runSearch(q){
   const teach = activeOnly(TEACHERS).filter(t=>(t.name||'').toLowerCase().includes(nq));
   const chap = activeOnly(CHAPTERS).filter(c=>(c.title||'').toLowerCase().includes(nq));
   const lec = activeOnly(LECTURES).filter(l=>(l.title||'').toLowerCase().includes(nq));
+  const exams = activeOnly(EXAMS).filter(e=>(e.title||'').toLowerCase().includes(nq));
 
   const groups = [
     {label:'المواد', icon:'grid', items: subj.map(s=>({title:s.name, path:'مادة دراسية', go:`openSubject('${s.id}')`}))},
     {label:'المدرّسين', icon:'users', items: teach.map(t=>({title:t.name, path:subjName(t.subjectId), go:`jumpToTeacher('${t.id}')`}))},
     {label:'الفصول', icon:'layers', items: chap.map(c=>({title:c.title, path:teachName(c.teacherId), go:`jumpToChapter('${c.id}')`}))},
     {label:'المحاضرات', icon:'playCircle', items: lec.map(l=>({title:l.title, path:chapTitle(l.chapterId), go:`jumpToLecture('${l.id}')`}))},
+    {label:'الامتحانات', icon:'notebook', items: exams.map(e=>({title:e.title, path:chapTitle(e.chapterId), go:`jumpToExam('${e.id}')`}))},
   ].filter(g=>g.items.length);
 
   const wrap = $('searchResults');
@@ -2319,21 +2548,33 @@ function runSearch(q){
 /* jump helpers — resolve the parent chain then navigate straight to the target */
 function jumpToTeacher(teacherId){
   const t = TEACHERS.find(x=>x.id===teacherId); if(!t) return;
+  cur.mode = (t.section==='exams') ? 'exams' : 'lectures';
   cur.subjectId = t.subjectId; cur.teacherId=null; cur.chapterId=null;
   clearSearch(); openTeacher(teacherId);
 }
 function jumpToChapter(chapterId){
   const c = CHAPTERS.find(x=>x.id===chapterId); if(!c) return;
+  cur.mode = (c.contentType==='exams') ? 'exams' : 'lectures';
   cur.subjectId = c.subjectId; cur.teacherId = c.teacherId; cur.chapterId=null;
   clearSearch(); openChapter(chapterId);
 }
 function jumpToLecture(lectureId){
   const l = LECTURES.find(x=>x.id===lectureId); if(!l) return;
   const c = CHAPTERS.find(x=>x.id===l.chapterId); if(!c) return;
+  cur.mode = 'lectures';
   cur.subjectId = c.subjectId; cur.teacherId = c.teacherId; cur.chapterId = c.id;
   clearSearch();
   renderLecturesTitle(); renderLectures(); showView('lectures');
   playLecture(lectureId);
+}
+function jumpToExam(examId){
+  const e = EXAMS.find(x=>x.id===examId); if(!e) return;
+  const c = CHAPTERS.find(x=>x.id===e.chapterId); if(!c) return;
+  cur.mode = 'exams';
+  cur.subjectId = c.subjectId; cur.teacherId = c.teacherId; cur.chapterId = c.id;
+  clearSearch();
+  renderLecturesTitle(); renderLectures(); showView('lectures');
+  openExamPdf(examId);
 }
 
 /* ---------------------------------------------------------------------- */
