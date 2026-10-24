@@ -117,7 +117,7 @@ img{max-width:100%; display:block;}
 .auth-chip.login-chip .icn{color:var(--gold);}
 
 /* ---------- layout ---------- */
-.view{position:relative; z-index:1; padding:16px; max-width:640px; margin:0 auto; animation:viewIn .32s cubic-bezier(.2,.8,.2,1);}
+.view{position:relative; z-index:1; padding:16px; max-width:640px; margin:0 auto; overflow-x:hidden; animation:viewIn .32s cubic-bezier(.2,.8,.2,1);}
 @keyframes viewIn{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
 .hidden{display:none !important;}
 
@@ -315,7 +315,8 @@ img{max-width:100%; display:block;}
   opacity:0; animation:cardIn .4s ease forwards;
 }
 .chapter-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
-.chapter-title{font-weight:800; font-size:16px; line-height:1.4;}
+.chapter-top > div{min-width:0;}
+.chapter-title{font-weight:800; font-size:16px; line-height:1.4; word-break:break-word;}
 .chapter-teacher{font-size:12px; color:var(--text-dim); margin-top:4px;}
 .chapter-badge{
   width:44px; height:44px; border-radius:50%; flex-shrink:0;
@@ -357,7 +358,7 @@ img{max-width:100%; display:block;}
   background:radial-gradient(circle,rgba(241,183,109,.16),transparent 70%);
   border-color:var(--gold); color:var(--gold);
 }
-.lecture-title{flex:1; font-weight:700; font-size:14px;}
+.lecture-title{flex:1; font-weight:700; font-size:14px; min-width:0; word-break:break-word;}
 .lecture-play{
   width:32px; height:32px; border-radius:50%; flex-shrink:0;
   background:var(--teal-glow); display:flex; align-items:center; justify-content:center;
@@ -480,7 +481,7 @@ img{max-width:100%; display:block;}
   transition:opacity .2s;
 }
 .manage-row.inactive{opacity:.45;}
-.manage-row .mr-title{flex:1; font-size:13.5px; font-weight:700;}
+.manage-row .mr-title{flex:1; font-size:13.5px; font-weight:700; min-width:0; word-break:break-word;}
 .manage-row .mr-sub{font-size:11px; color:var(--text-faint);}
 .mr-reorder{display:flex; flex-direction:column; gap:2px; flex-shrink:0;}
 .mr-reorder button{width:20px; height:16px; display:flex; align-items:center; justify-content:center; color:var(--text-faint);}
@@ -582,7 +583,7 @@ img{max-width:100%; display:block;}
   background:linear-gradient(135deg,#141414,#0c0c0c); border:1px solid var(--teal-dim); border-radius:16px;
   padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:0 8px 30px rgba(0,0,0,.5);
 }
-.install-banner .ib-text{flex:1; font-size:12.5px;}
+.install-banner .ib-text{flex:1; font-size:12.5px; min-width:0;}
 .install-banner .ib-text b{display:block; font-size:13.5px; margin-bottom:2px;}
 .install-banner .ib-text .icn{display:inline-flex; vertical-align:-2px; color:var(--teal);}
 .install-banner button.ib-go{background:var(--teal); color:#04211f; padding:8px 16px; border-radius:10px; font-weight:800; font-size:12.5px;}
@@ -1295,6 +1296,7 @@ function playLecture(id){
   curLecture = LECTURES.find(l=>l.id===id);
   if(!curLecture) return;
   saveLastWatched(curLecture);
+  syncLastWatchedToVisitor(curLecture);
   curServerIdx = 0;
   $('playerTitle').textContent = curLecture.title;
   renderServerTabs();
@@ -1504,9 +1506,12 @@ function fetchVisitorIP(){
     .catch(()=>null)
     .finally(()=>{ if(timer) clearTimeout(timer); });
 }
+let visitorSessionStart = null, visitorLastHeartbeatTime = null;
 function startVisitorTracking(user){
   if(visitorTrackingStarted) return;
   visitorTrackingStarted = true;
+  visitorSessionStart = Date.now();
+  visitorLastHeartbeatTime = Date.now();
   // نأخر أول نبضة قليلًا عشان ما تزاحم تحميل المواد/المحاضرات الأساسية على
   // الإنترنت البطيء — التتبع مو حرج الوقت، لكن محتوى الموقع نفسه حرج.
   setTimeout(()=> sendVisitorHeartbeat(user), 2500);
@@ -1514,25 +1519,42 @@ function startVisitorTracking(user){
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState==='visible') sendVisitorHeartbeat(user);
   });
+  // يسجّل الوقت المتبقي قبل ما يسكّر الصفحة، بقدر الإمكان (مو مضمونة 100% بالمتصفحات)
+  window.addEventListener('pagehide', ()=> sendVisitorHeartbeat(user, true));
 }
 function stopVisitorTracking(){
   visitorTrackingStarted = false;
   if(visitorHeartbeatTimer){ clearInterval(visitorHeartbeatTimer); visitorHeartbeatTimer=null; }
 }
-function sendVisitorHeartbeat(user){
+function sendVisitorHeartbeat(user, isUnloading){
   const ref = db.collection('visitors').doc(user.uid);
+  const now = Date.now();
+  // دلتا الوقت الفعلي من آخر نبضة (محدود بـ 3 دقائق عشان ما تحتسب فترات سكون الجهاز كوقت فتح فعلي)
+  const deltaSec = Math.max(0, Math.min(Math.round((now - (visitorLastHeartbeatTime||now))/1000), 180));
+  visitorLastHeartbeatTime = now;
+  const sessionSec = Math.round((now - (visitorSessionStart||now))/1000);
   Promise.all([fetchVisitorIP(), detectDeviceAsync()]).then(([ip, device])=>{
     ref.get().then(snap=>{
       const data = {
         ip: ip || 'غير معروف',
         device: device,
         browser: detectBrowser(),
-        lastSeenAt: firebase.firestore.FieldValue.serverTimestamp()
+        lastSeenAt: firebase.firestore.FieldValue.serverTimestamp(),
+        sessionSeconds: sessionSec,
+        totalSeconds: firebase.firestore.FieldValue.increment(deltaSec)
       };
       if(!snap.exists) data.firstSeenAt = firebase.firestore.FieldValue.serverTimestamp();
       ref.set(data, {merge:true}).catch(()=>{});
     }).catch(()=>{});
   });
+}
+/* يزامن آخر محاضرة تابعها الزائر لسجله بالأدمن (بالإضافة لحفظها محليًا لإعادة المتابعة) */
+function syncLastWatchedToVisitor(lecture){
+  if(!currentUser || !currentUser.isAnonymous) return;
+  db.collection('visitors').doc(currentUser.uid).set({
+    lastLectureTitle: lecture.title || '',
+    lastLectureAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, {merge:true}).catch(()=>{});
 }
 let visitorsUnsub = null;
 function startVisitorsListener(){
@@ -1842,7 +1864,7 @@ function renderAdminVisitors(body){
     ${VISITORS.filter(v=>adminMatches(v.ip)||adminMatches(v.device)||adminMatches(v.browser)).map(v=>{
       const online = isVisitorOnline(v.lastSeenAt);
       return `
-      <div class="manage-row">
+      <div class="manage-row" style="align-items:flex-start;">
         <div class="teacher-avatar" style="width:38px;height:38px;font-size:12px;flex-shrink:0;position:relative;">
           ${ic('users',16)}
           ${online?'<span style="position:absolute;bottom:-1px;left:-1px;width:11px;height:11px;border-radius:50%;background:#2ecc71;border:2px solid var(--bg-elev);"></span>':''}
@@ -1851,12 +1873,21 @@ function renderAdminVisitors(body){
           <div class="mr-title">${esc(v.ip||'IP غير معروف')}</div>
           <div class="mr-sub">${esc(v.device||'')} • ${esc(v.browser||'')}</div>
           <div class="mr-sub" style="margin-top:2px;">
-            ${online ? '<span style="color:#2ecc71;font-weight:800;">🟢 متصل الآن</span>' : `آخر ظهور: ${fmtDateTime(v.lastSeenAt)}`}
+            ${online ? '<span style="color:#2ecc71;font-weight:800;">🟢 متصل الآن'+(v.sessionSeconds?(' — الجلسة الحالية: '+fmtDuration(v.sessionSeconds)):'')+'</span>' : `آخر ظهور: ${fmtDateTime(v.lastSeenAt)}`}
           </div>
+          <div class="mr-sub" style="margin-top:2px;">إجمالي وقت الفتح: ${fmtDuration(v.totalSeconds||0)}</div>
+          ${v.lastLectureTitle ? `<div class="mr-sub" style="margin-top:2px;color:var(--gold);">${ic('playCircle',11)} آخر محاضرة: ${esc(v.lastLectureTitle)}</div>` : ''}
         </div>
       </div>`;
     }).join('') || '<div style="color:var(--text-faint);font-size:12.5px;text-align:center;padding:20px 0;">لا يوجد زوّار مسجّلين بعد</div>'}
   `;
+}
+function fmtDuration(totalSec){
+  totalSec = Math.max(0, Math.round(totalSec||0));
+  const h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), s = totalSec%60;
+  if(h>0) return `${h} س ${m} د`;
+  if(m>0) return `${m} د ${s} ث`;
+  return `${s} ث`;
 }
 
 /* ---- ADMIN: ASSISTANTS (دعوة مدرّس مساعد بصلاحيات محدودة لمادته) ---- */
